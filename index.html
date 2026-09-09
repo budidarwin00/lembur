@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rekap lembur & OT - SYNC ADMIN</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>body{font-family:Inter,sans-serif}</style>
+</head>
+<body class="bg-[#f6f5f4] min-h-screen">
+<div id="app"></div>
+<script>
+// === KONFIGURASI SYNC ADMIN ===
+// Ganti URL ini dengan URL Web App dari Google Apps Script kamu setelah deploy
+// Contoh: https://script.google.com/macros/s/AKfycbw5cHnAw-eyp-8KPmIhWijZbGDofMhjrSkibD-23AEBimCeT8m9msRm63AGur7N1wWpXw/exec
+const SYNC_URL = localStorage.getItem('rk_sync_url') || 'https://script.google.com/macros/s/AKfycbw5cHnAw-eyp-8KPmIhWijZbGDofMhjrSkibD-23AEBimCeT8m9msRm63AGur7N1wWpXw/exec';
+// Auto-save URL ke localStorage untuk semua device
+if(!localStorage.getItem('rk_sync_url')){localStorage.setItem('rk_sync_url', 'https://script.google.com/macros/s/AKfycbw5cHnAw-eyp-8KPmIhWijZbGDofMhjrSkibD-23AEBimCeT8m9msRm63AGur7N1wWpXw/exec');} 
+const SPREADSHEET_ID = '1_v3QLraptmdhD2FRPdzvMd6hYIFJxVz5YyqjKW1g4lc';
+
+const TUL={2:3.5,3:5.5,4:7.5,6:12,7:14,8:16};
+const getTUL=j=>TUL[j]||j*2;
+let karyawan=JSON.parse(localStorage.getItem('rk_kar')||'null')||[
+  {nik:'K001',nama:'Budi Santoso',pass:'budi'},
+  {nik:'K002',nama:'Siti Aminah',pass:'siti'},
+];
+let rekap=JSON.parse(localStorage.getItem('rk_rekap')||'null')||[];
+let user=JSON.parse(localStorage.getItem('rk_user')||'null');
+let filterBulan=String(new Date().getMonth()+1);
+let filterTahun=String(new Date().getFullYear());
+let loginTab='login';
+let toast='';
+let syncStatus = '';
+
+function save(){localStorage.setItem('rk_kar',JSON.stringify(karyawan));localStorage.setItem('rk_rekap',JSON.stringify(rekap));if(user)localStorage.setItem('rk_user',JSON.stringify(user));render();}
+function showToast(m){toast=m;render();setTimeout(()=>{toast='';render();},2500);}
+function handleLogin(){
+  const nik=document.getElementById('lnik').value.trim();
+  const pass=document.getElementById('lpass').value.trim();
+  const k=karyawan.find(x=>x.nik.toLowerCase()===nik.toLowerCase() && x.pass===pass);
+  if(k){user={nik:k.nik,nama:k.nama};save();} else document.getElementById('lerr').innerText='NPK/password salah';
+}
+function handleDaftar(){
+  const nama=document.getElementById('rnama').value.trim();
+  const nik=document.getElementById('rnik').value.trim().toUpperCase();
+  const pass=document.getElementById('rpass').value;
+  const pass2=document.getElementById('rpass2').value;
+  const err=document.getElementById('rerr');
+  if(!nama||!nik||!pass){err.innerText='Nama, NPK, password wajib';return;}
+  if(pass.length<4){err.innerText='Min 4 karakter';return;}
+  if(pass!==pass2){err.innerText='Konfirmasi tidak sama';return;}
+  if(karyawan.some(x=>x.nik.toLowerCase()===nik.toLowerCase())){err.innerText='NPK sudah ada';return;}
+  karyawan.push({nik,nama,pass});save();showToast('Daftar OK');loginTab='login';render();
+}
+
+async function syncToSheet(data){
+  if(!SYNC_URL){
+    syncStatus = '⚠️ Belum setting SYNC_URL - data hanya lokal';
+    return false;
+  }
+  try{
+    syncStatus = '⏳ Sync ke admin...';
+    render();
+    const payload = {
+      tanggal: data.tanggal,
+      nik: data.nik,
+      nama: data.nama,
+      jam: data.jam,
+      tul: data.tul,
+      keterangan: 'lembur',
+      inputOleh: data.nama,
+      catatan: 'Input dari HP karyawan',
+      spreadsheetId: SPREADSHEET_ID
+    };
+    const res = await fetch(SYNC_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    // no-cors tidak bisa baca response, anggap sukses
+    syncStatus = '✅ Tersync ke Admin';
+    setTimeout(()=>{syncStatus=''; render();},3000);
+    return true;
+  }catch(e){
+    syncStatus = '❌ Gagal sync, coba lagi';
+    render();
+    return false;
+  }
+}
+
+async function handleInput(){
+  const tgl=document.getElementById('itgl').value;
+  const jam=parseInt(document.getElementById('ijam').value);
+  if(!tgl||!jam) return showToast('Isi tanggal & jam');
+  const newData={id:Date.now().toString(),tanggal:tgl,nik:user.nik,nama:user.nama,jam,tul:getTUL(jam)};
+  rekap.unshift(newData);
+  save();
+  showToast(`${jam} jam disimpan`);
+  // Sync ke Spreadsheet admin
+  await syncToSheet(newData);
+}
+
+function hapus(id){if(confirm('Hapus data ini?')){rekap=rekap.filter(x=>x.id!==id);save();}}
+
+function exportPDF(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const bulanNama = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  const labelBulan = filterBulan==='all'?'Semua Bulan':bulanNama[parseInt(filterBulan)];
+  const labelTahun = filterTahun==='all'?'Semua Tahun':filterTahun;
+  const labelFilter = `${labelBulan} ${filterTahun==='all'?'':filterTahun}`.trim() || 'Semua Periode';
+  
+  let data=rekap.filter(x=>x.nik===user.nik);
+  if(filterBulan!=='all') data=data.filter(x=> String(parseInt(x.tanggal.split('-')[1])) === String(parseInt(filterBulan)) );
+  if(filterTahun!=='all') data=data.filter(x=> x.tanggal.split('-')[0] === filterTahun );
+  data.sort((a,b)=> new Date(b.tanggal) - new Date(a.tanggal));
+  const totalJam=data.reduce((a,b)=>a+b.jam,0);
+  const totalTUL=data.reduce((a,b)=>a+b.tul,0);
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(14);
+  doc.text('Rekap lembur & OT',14,18);
+  doc.setFont('helvetica','normal'); doc.setFontSize(10);
+  doc.text(`Nama: ${user.nama}  |  NPK: ${user.nik}  |  Periode: ${labelFilter}`,14,25);
+  doc.text(`Total Jam: ${totalJam} | Total TUL: ${totalTUL} | Jumlah Hari: ${data.length}`,14,31);
+  doc.setDrawColor(200); doc.line(14,33,196,33);
+
+  let y=40;
+  doc.setFont('helvetica','bold'); doc.setFontSize(10);
+  doc.text('No',14,y); doc.text('Tanggal',24,y); doc.text('Jam',60,y); doc.text('TUL',80,y);
+  y+=4; doc.setDrawColor(200); doc.line(14,y,196,y); y+=6;
+  doc.setFont('helvetica','normal');
+
+  if(data.length===0){
+    doc.text(`Tidak ada data di periode ${labelFilter}`,14,y);
+  } else {
+    data.forEach((r,i)=>{
+      if(y>275){ doc.addPage(); y=20; }
+      doc.text(String(i+1),14,y);
+      doc.text(r.tanggal,24,y);
+      doc.text(`${r.jam} jam`,60,y);
+      doc.text(String(r.tul),80,y);
+      y+=7;
+    });
+  }
+
+  const tglCetak=new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'});
+  y+=10; if(y>280){doc.addPage(); y=20;}
+  doc.setFontSize(8); doc.setTextColor(120);
+  doc.text(`Dicetak pada ${tglCetak} | Rekap lembur & OT - Filter: ${labelFilter}`,14,y);
+
+  const fileName=`Rekap-Lembur-${user.nik}-${labelBulan}-${labelTahun}.pdf`.replace(/ /g,'').replace('SemuaBulan-','');
+  doc.save(fileName);
+  showToast(`PDF ${labelFilter} di-export`);
+}
+
+function saveSyncUrl(){
+  const url = document.getElementById('syncUrl').value.trim();
+  if(url){
+    localStorage.setItem('rk_sync_url', url);
+    showToast('Sync URL disimpan!');
+    setTimeout(()=>location.reload(), 800);
+  }
+}
+
+function render(){
+  const app=document.getElementById('app');
+  if(!user){
+    app.innerHTML=`<div class="min-h-screen grid place-items-center p-4 bg-zinc-900">
+      <div class="w-full max-w-[360px] bg-white rounded-[22px] p-5 shadow-2xl">
+        <h1 class="font-bold text-[16px]">Rekap lembur & OT</h1>
+        ${SYNC_URL ? `<div class="mt-1"><div class="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></div></div>` : ''}
+        <div class="mt-3 flex gap-1 p-1 bg-zinc-100 rounded-full">
+          <button onclick="loginTab='login';render()" class="flex-1 h-8 rounded-full text-[12px] font-bold ${loginTab==='login'?'bg-white shadow border':''}">Login</button>
+          <button onclick="loginTab='daftar';render()" class="flex-1 h-8 rounded-full text-[12px] font-bold ${loginTab==='daftar'?'bg-white shadow border':''}">Daftar</button>
+        </div>
+        ${loginTab==='login'?`<div class="mt-4 space-y-2">
+          <input id="lnik" placeholder="NPK (K001)" class="w-full h-10 rounded-xl border px-3 text-[14px]">
+          <input id="lpass" type="password" placeholder="Password" class="w-full h-10 rounded-xl border px-3 text-[14px]">
+          <div id="lerr" class="text-[11px] text-red-600"></div>
+          <button onclick="handleLogin()" class="w-full h-10 rounded-xl bg-zinc-900 text-white font-bold text-[13px]">Masuk</button>
+        </div>`:`<div class="mt-4 space-y-2">
+          <input id="rnama" placeholder="Nama Panggilan" class="w-full h-10 rounded-xl border px-3 text-[14px]">
+          <input id="rnik" placeholder="NPK (K005)" class="w-full h-10 rounded-xl border px-3 text-[14px] font-mono uppercase">
+          <input id="rpass" type="password" placeholder="Password min 4 karakter" class="w-full h-10 rounded-xl border px-3 text-[14px]">
+          <input id="rpass2" type="password" placeholder="Konfirmasi Password" class="w-full h-10 rounded-xl border px-3 text-[14px]">
+          <div id="rerr" class="text-[11px] text-red-600"></div>
+          <button onclick="handleDaftar()" class="w-full h-10 rounded-xl bg-zinc-900 text-white font-bold text-[13px]">Daftar</button>
+        </div>`}
+        ${!SYNC_URL ? `<div class="mt-4 p-3 rounded-xl bg-amber-50 border border-amber-200">
+          <div class="text-[10px] font-bold text-amber-800">Setting Admin (sekali saja):</div>
+          <input id="syncUrl" placeholder="Tempel URL Web App Apps Script" class="mt-2 w-full h-8 rounded-lg border px-2 text-[11px]">
+          <button onclick="saveSyncUrl()" class="mt-2 w-full h-8 rounded-lg bg-amber-600 text-white text-[11px] font-bold">Simpan URL Sync</button>
+          <div class="mt-2 text-[9px] text-zinc-500">Kosongkan jika belum ada, data tetap tersimpan lokal</div>
+        </div>` : ''}
+      </div>
+    </div>`;return;
+  }
+
+  let data=rekap.filter(x=>x.nik===user.nik);
+  if(filterBulan!=='all') data=data.filter(x=> String(parseInt(x.tanggal.split('-')[1])) === String(parseInt(filterBulan)) );
+  if(filterTahun!=='all') data=data.filter(x=> x.tanggal.split('-')[0] === filterTahun );
+  data.sort((a,b)=> new Date(b.tanggal) - new Date(a.tanggal));
+  const totalJam=data.reduce((a,b)=>a+b.jam,0);
+  const totalTUL=data.reduce((a,b)=>a+b.tul,0);
+  const bulanNama = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  const labelBulan = filterBulan==='all'?'Semua Bulan':bulanNama[parseInt(filterBulan)];
+  const labelTahun = filterTahun==='all'?'Semua Tahun':filterTahun;
+  const labelFilter = `${labelBulan} ${filterTahun==='all'?'':filterTahun}`.trim();
+  const tahunSet=new Set(rekap.map(r=>r.tanggal.split('-')[0]));
+  tahunSet.add(String(new Date().getFullYear()));
+  tahunSet.add('2024');tahunSet.add('2025');tahunSet.add('2026');
+  const tahunList=Array.from(tahunSet).sort().reverse();
+
+  app.innerHTML=`<div class="max-w-[520px] mx-auto min-h-screen bg-white md:my-4 md:border md:rounded-[24px] md:shadow-xl overflow-hidden">
+    <div class="px-4 h-[52px] flex justify-between items-center border-b bg-white sticky top-0 z-10">
+      <div class="flex items-center gap-2"><div class="w-8 h-8 rounded-full bg-zinc-900 text-white grid place-items-center font-bold text-[11px]">${user.nama[0]}</div><div><div class="font-bold text-[13px] leading-none">${user.nama}</div><div class="text-[10px] text-zinc-500">${user.nik} • ${labelFilter} ${syncStatus ? '• '+syncStatus : ''}</div></div></div>
+      <button onclick="localStorage.removeItem('rk_user');user=null;render()" class="h-8 px-3 rounded-full bg-zinc-900 text-white text-[11px] font-bold">Logout</button>
+    </div>
+    <div class="p-3 space-y-3">
+      ${SYNC_URL ? `<div class="flex justify-center"><div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center shadow-sm"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></div></div>` : `<div class="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2">
+        <div class="text-[10px] font-bold text-amber-800">⚠️ Belum sync ke admin</div>
+        <div class="mt-1 flex gap-1"><input id="syncUrl" value="${SYNC_URL}" placeholder="Tempel URL Web App Apps Script" class="flex-1 h-8 rounded-lg border px-2 text-[11px]"><button onclick="saveSyncUrl()" class="h-8 px-3 rounded-lg bg-amber-600 text-white text-[11px] font-bold">Simpan</button></div>
+      </div>`}
+      <div class="grid grid-cols-2 gap-2">
+        <div class="rounded-[16px] bg-zinc-900 text-white p-3.5">
+          <div class="text-[9px] uppercase opacity-60">TOTAL JAM • ${labelFilter.toUpperCase()}</div>
+          <div class="text-[26px] font-bold leading-none mt-1">${totalJam}</div>
+          <div class="text-[10px] opacity-60 mt-1">${data.length} hari lembur</div>
+        </div>
+        <div class="rounded-[16px] bg-indigo-600 text-white p-3.5">
+          <div class="text-[9px] uppercase opacity-70">TOTAL TUL • ${labelFilter.toUpperCase()}</div>
+          <div class="text-[26px] font-bold leading-none mt-1">${totalTUL}</div>
+          <div class="text-[10px] opacity-70 mt-1">poin TUL</div>
+        </div>
+      </div>
+      <div class="rounded-[18px] border bg-white p-3 shadow-sm">
+        <div class="font-bold text-[12px]">Input Lembur</div>
+        <div class="mt-3 grid grid-cols-2 gap-2">
+          <div>
+            <div class="text-[10px] text-zinc-500 mb-1">Tanggal</div>
+            <input id="itgl" type="date" value="${new Date().toISOString().slice(0,10)}" class="w-full h-10 rounded-xl border bg-zinc-50 px-3 text-[13px]">
+          </div>
+          <div>
+            <div class="text-[10px] text-zinc-500 mb-1">Jam</div>
+            <select id="ijam" class="w-full h-10 rounded-xl border bg-zinc-50 px-3 text-[13px] font-bold">
+              <option value="8">8 jam</option>
+              <option value="7">7 jam</option>
+              <option value="6">6 jam</option>
+              <option value="4">4 jam</option>
+              <option value="3" selected>3 jam</option>
+              <option value="2">2 jam</option>
+            </select>
+          </div>
+        </div>
+        <button onclick="handleInput()" class="mt-3 w-full h-10 rounded-xl bg-zinc-900 text-white font-bold text-[13px]">simpan</button>
+        ${syncStatus ? `<div class="mt-2 text-[10px] text-center text-zinc-500">${syncStatus}</div>` : ''}
+      </div>
+      <div class="rounded-[18px] border bg-white overflow-hidden shadow-sm">
+        <div class="px-3.5 py-3 border-b bg-white">
+          <div class="flex justify-between items-center">
+            <div class="font-bold text-[12px]">Riwayat Lembur</div>
+            <button onclick="exportPDF()" class="h-8 px-3 rounded-full bg-white border text-[11px] font-bold flex items-center gap-1 hover:bg-zinc-50">📄 Export PDF</button>
+          </div>
+          <div class="mt-3 grid grid-cols-2 gap-2">
+            <div>
+              <div class="text-[9px] text-zinc-500 uppercase font-bold mb-1">Bulan</div>
+              <select onchange="filterBulan=this.value;render()" class="w-full h-9 rounded-xl border bg-zinc-50 px-3 text-[12px] font-semibold">
+                <option value="all" ${filterBulan==='all'?'selected':''}>Semua Bulan</option>
+                <option value="1" ${filterBulan==='1'?'selected':''}>Januari</option><option value="2" ${filterBulan==='2'?'selected':''}>Februari</option>
+                <option value="3" ${filterBulan==='3'?'selected':''}>Maret</option><option value="4" ${filterBulan==='4'?'selected':''}>April</option>
+                <option value="5" ${filterBulan==='5'?'selected':''}>Mei</option><option value="6" ${filterBulan==='6'?'selected':''}>Juni</option>
+                <option value="7" ${filterBulan==='7'?'selected':''}>Juli</option><option value="8" ${filterBulan==='8'?'selected':''}>Agustus</option>
+                <option value="9" ${filterBulan==='9'?'selected':''}>September</option><option value="10" ${filterBulan==='10'?'selected':''}>Oktober</option>
+                <option value="11" ${filterBulan==='11'?'selected':''}>November</option><option value="12" ${filterBulan==='12'?'selected':''}>Desember</option>
+              </select>
+            </div>
+            <div>
+              <div class="text-[9px] text-zinc-500 uppercase font-bold mb-1">Tahun</div>
+              <select onchange="filterTahun=this.value;render()" class="w-full h-9 rounded-xl border bg-zinc-50 px-3 text-[12px] font-semibold">
+                <option value="all" ${filterTahun==='all'?'selected':''}>Semua Tahun</option>
+                ${tahunList.map(t=>`<option value="${t}" ${filterTahun===t?'selected':''}>${t}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+          <div class="mt-2 text-[10px] text-zinc-500">Urut berdasarkan tanggal terbaru • ${data.length} data • ${labelFilter}</div>
+        </div>
+        <div class="divide-y">
+          ${data.length===0?`<div class="p-6 text-center text-[12px] text-zinc-500">Tidak ada data di ${labelFilter}</div>`:
+            data.map((r,i)=>{
+              const d = new Date(r.tanggal);
+              const tgl = d.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
+              return `<div class="px-3.5 py-3 flex items-center gap-2.5">
+              <div class="flex-1 min-w-0">
+                <div class="font-bold text-[13px]">${tgl}</div>
+                <div class="flex items-center gap-1.5 mt-1"><span class="px-2.5 py-0.5 rounded-full bg-zinc-100 border text-[11px] font-semibold">${r.jam} jam</span><span class="px-2.5 py-0.5 rounded-full bg-indigo-600 text-white text-[11px] font-bold">${r.tul} TUL</span></div>
+              </div>
+              <button onclick="hapus('${r.id}')" class="text-[11px] text-zinc-500 font-semibold px-3 py-1.5 rounded-full border bg-white hover:bg-zinc-50">Hapus</button>
+            </div>`;
+            }).join('')}
+        </div>
+        <div class="bg-zinc-50 px-3.5 py-2.5 text-[11px] font-bold border-t text-zinc-600 flex justify-between">
+          <span>${data.length} data • ${labelFilter}</span><span>${totalJam}j • ${totalTUL} TUL</span>
+        </div>
+      </div>
+    </div>
+    ${toast?`<div class="fixed bottom-4 left-1/2 -translate-x-1/2 bg-zinc-900 text-white px-4 py-2 rounded-full text-[11px] z-50">${toast}</div>`:''}
+  </div>`;
+}
+render();
+</script>
+</body>
+</html>
