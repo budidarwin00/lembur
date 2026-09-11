@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="id">
+<head><style>
+@font-face {
+  font-family: "Optimistic";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("/fonts/OptimisticAI_VF_Optimized.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Optimistic Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/OptimisticMono_W_TextRegular.woff2") format("woff2");
+}
+:where(html) {
+  font-family: "Optimistic", system-ui, sans-serif;
+}
+:where(code, pre, kbd, samp) {
+  font-family: "Optimistic Mono", ui-monospace, monospace;
+}
+</style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Karyawan - Lihat TUL</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>body{font-family:Inter,sans-serif}</style>
+</head>
+<body class="bg-[#f6f5f4] min-h-screen">
+<div id="app"></div>
+<script>
+const SYNC_URL = 'https://script.google.com/macros/s/AKfycbw5cHnAw-eyp-8KPmIhWijZbGDofMhjrSkibD-23AEBimCeT8m9msRm63AGur7N1wWpXw/exec';
+const TUL_MAP={2:3.5,3:5.5,4:7.5,6:12,7:14,8:17};
+const calcTUL=j=>TUL_MAP[j]||j*2;
+function normNama(n){ return String(n||'').trim().toLowerCase(); }
+function normalizeTanggal(t){
+  if(!t) return '';
+  let str = String(t).trim();
+  if(str.includes('T')) str = str.split('T')[0];
+  if(str.includes(' ')) str = str.split(' ')[0];
+  try{
+    const d = new Date(t);
+    if(!isNaN(d.getTime())){
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,'0');
+      const day = String(d.getDate()).padStart(2,'0');
+      return `${y}-${m}-${day}`;
+    }
+  }catch{}
+  return str;
+}
+function formatTanggal(t){
+  const norm = normalizeTanggal(t);
+  const parts = norm.split('-');
+  if(parts.length===3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+  return norm;
+}
+const DEFAULT_KARYAWAN = [
+  {nama:'Nia',pass:'1234'},{nama:'Aditya',pass:'1234'},{nama:'Anisa',pass:'1234'},{nama:'Aaf',pass:'1234'},{nama:'Syarif',pass:'1234'},{nama:'Budi',pass:'1234'},{nama:'Topik',pass:'1234'},{nama:'Yudi',pass:'1234'},{nama:'Dozen',pass:'1234'},{nama:'Putri',pass:'1234'},{nama:'Arief',pass:'1234'},{nama:'Anah',pass:'1234'},{nama:'Supriyadi',pass:'1234'},{nama:'Eka',pass:'1234'},{nama:'Nely',pass:'1234'},{nama:'Zaelani',pass:'1234'},
+];
+let karyawanList=JSON.parse(localStorage.getItem('rk_kar_admin_nonik')||'null');
+if(!karyawanList || karyawanList.length<16){ karyawanList=DEFAULT_KARYAWAN; localStorage.setItem('rk_kar_admin_nonik', JSON.stringify(karyawanList)); }
+let user=JSON.parse(localStorage.getItem('rk_user_viewonly')||'null');
+let allData=[];
+let filterBulan=String(new Date().getMonth()+1);
+let filterTahun=String(new Date().getFullYear());
+let showPassModal=false;
+
+function showToast(m){ const t=document.createElement('div'); t.className='fixed bottom-4 left-1/2 -translate-x-1/2 bg-zinc-900 text-white px-5 py-3 rounded-full text-[13px] font-semibold z-50 max-w-[90%] text-center shadow-2xl'; t.innerText=m; document.body.appendChild(t); setTimeout(()=>t.remove(),3000); }
+
+function jsonp(url){
+  return new Promise((resolve,reject)=>{
+    const cb='cb_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);
+    window[cb]=(data)=>{ delete window[cb]; document.getElementById(cb)?.remove(); resolve(data); };
+    const s=document.createElement('script'); s.id=cb;
+    s.src=url+(url.includes('?')?'&':'?')+'callback='+cb+'&t='+Date.now();
+    s.onerror=()=>{ delete window[cb]; s.remove(); reject(new Error('fail')); };
+    document.body.appendChild(s);
+    setTimeout(()=>{ if(window[cb]){ delete window[cb]; s.remove(); reject(new Error('Timeout')); } },8000);
+  });
+}
+let isFetching=false;
+async function fetchData(){
+  if(isFetching) return;
+  isFetching=true;
+  try{
+    const j = await jsonp(SYNC_URL+'?action=read');
+    if(Array.isArray(j)) {
+      allData=j.map(row=>({tanggal:row.tanggal, tanggalNorm: normalizeTanggal(row.tanggal), nama:row.nama||row.nik, jam:Number(row.jam||0), tul:calcTUL(Number(row.jam||0))})).filter(x=>x.nama);
+    }
+  }catch(e){}
+  isFetching=false;
+  render();
+}
+let loginLoading=false;
+function handleLogin(){
+  if(loginLoading) return;
+  const nama=document.getElementById('lnama').value.trim();
+  const pass=document.getElementById('lpass').value.trim();
+  const btn=document.getElementById('btnLogin');
+  const errEl=document.getElementById('lerr');
+  if(!nama){ if(errEl) errEl.innerText='Pilih nama dulu'; return; }
+  if(!pass){ if(errEl) errEl.innerText='Isi password'; return; }
+  const k=karyawanList.find(x=> normNama(x.nama)===normNama(nama) && x.pass===pass);
+  if(k){
+    loginLoading=true;
+    if(btn){ btn.innerHTML='⏳ Masuk...'; btn.disabled=true; btn.classList.add('opacity-60'); }
+    // INSTANT LOGIN - tidak nunggu fetch
+    user={nama:k.nama};
+    localStorage.setItem('rk_user_viewonly', JSON.stringify(user));
+    // Render langsung tanpa tunggu sheet
+    render();
+    // Fetch sheet di background
+    setTimeout(()=>{ fetchData(); loginLoading=false; }, 100);
+  } else {
+    if(errEl) errEl.innerText='Nama/password salah';
+    // shake animation
+    const card=document.getElementById('loginCard');
+    if(card){ card.classList.add('animate-pulse'); setTimeout(()=>card.classList.remove('animate-pulse'), 400); }
+  }
+}
+
+
+function togglePassModal(){ showPassModal=!showPassModal; render(); }
+async function handleGantiPass(){
+  const oldP=document.getElementById('oldPass').value;
+  const newP=document.getElementById('newPass').value;
+  const newP2=document.getElementById('newPass2').value;
+  const err=document.getElementById('perr');
+  const list=JSON.parse(localStorage.getItem('rk_kar_admin_nonik')||'[]');
+  const k=list.find(x=> normNama(x.nama)===normNama(user.nama));
+  if(!k || k.pass!==oldP){ err.innerText='Password lama salah'; return; }
+  if(!newP || newP.length<4){ err.innerText='Minimal 4 karakter'; return; }
+  if(newP!==newP2){ err.innerText='Konfirmasi tidak sama'; return; }
+  k.pass=newP;
+  localStorage.setItem('rk_kar_admin_nonik', JSON.stringify(list));
+  try{
+    await fetch(SYNC_URL, {method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'resetPass', nik:normNama(user.nama), nama:user.nama, newPass:newP})});
+  }catch{}
+  showPassModal=false;
+  showToast('✅ Password berhasil diganti');
+  render();
+}
+
+function logout(){ localStorage.removeItem('rk_user_viewonly'); user=null; render(); }
+
+function filteredDataUser(){
+  let d=[...allData].filter(x=> normNama(x.nama)===normNama(user.nama));
+  if(filterBulan!=='all'){ d=d.filter(x=>{ const norm = x.tanggalNorm || normalizeTanggal(x.tanggal); const m = norm.split('-')[1]; return String(parseInt(m))===String(parseInt(filterBulan)); }); }
+  if(filterTahun!=='all'){ d=d.filter(x=>{ const norm = x.tanggalNorm || normalizeTanggal(x.tanggal); const y = norm.split('-')[0]; return String(y)===filterTahun; }); }
+  return d.sort((a,b)=> new Date(b.tanggalNorm) - new Date(a.tanggalNorm));
+}
+
+function render(){
+  const app=document.getElementById('app');
+  if(!user){
+    app.innerHTML=`<div class="min-h-screen flex items-center justify-center p-4 bg-[#f6f5f4]"><div id="loginCard" class="w-full max-w-[380px] rounded-[28px] bg-white border shadow-sm p-7"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-zinc-900 text-white grid place-items-center font-bold text-[12px]">EF</div><div><div class="font-bold text-[16px]">Login Karyawan</div><div class="text-[11px] text-zinc-500"></div></div></div><div class="mt-6 space-y-3"><select id="lnama" class="w-full h-12 rounded-[16px] border-2 border-zinc-100 bg-zinc-50 px-5 text-[15px] font-semibold"><option value="">Pilih Nama</option>${karyawanList.map(k=>`<option value="${k.nama}">${k.nama}</option>`).join('')}</select><input id="lpass" type="password" placeholder="Password" class="w-full h-12 rounded-[16px] border-2 border-zinc-100 bg-zinc-50 px-5 text-[15px]"><div id="lerr" class="text-[11px] text-red-600"></div><button id="btnLogin" onclick="handleLogin()" class="w-full h-12 rounded-[16px] bg-zinc-900 text-white font-bold active:scale-[0.98] transition-all">Masuk</button></div></div></div>`;return;
+  }
+  const data=filteredDataUser();
+  const totalJam=data.reduce((a,b)=>a+b.jam,0);
+  const totalTUL=data.reduce((a,b)=>a+b.tul,0);
+  const bulanNama=['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  const labelBulan = filterBulan==='all'?'Semua Bulan':bulanNama[parseInt(filterBulan)]||filterBulan;
+  app.innerHTML=`<div class="max-w-[520px] mx-auto min-h-screen bg-[#f6f5f4]">
+    <div class="px-4 h-[64px] flex justify-between items-center bg-white border-b sticky top-0 z-10">
+      <div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-zinc-900 text-white grid place-items-center font-bold text-[12px]">EF</div><div><div class="font-bold text-[14px]">${user.nama}</div><div class="text-[11px] text-zinc-500"></div></div></div>
+      <div class="flex gap-1.5"><button onclick="togglePassModal()" class="h-10 w-10 rounded-full bg-zinc-100 border grid place-items-center text-[14px]">🔑</button><button onclick="logout()" class="h-10 px-5 rounded-full bg-zinc-900 text-white text-[12px] font-bold">Logout</button></div>
+    </div>
+    <div class="p-4 space-y-4">
+      ${showPassModal ? `<div class="rounded-[20px] border bg-white p-5 shadow-lg"><div class="flex justify-between items-center"><div class="font-bold text-[14px]">🔑 Ganti Password</div><button onclick="togglePassModal()" class="w-8 h-8 rounded-full bg-zinc-100 grid place-items-center">✕</button></div><div class="mt-4 space-y-3"><input id="oldPass" type="password" placeholder="Password Lama" class="w-full h-11 rounded-xl border-2 border-zinc-100 bg-zinc-50 px-4 text-[13px]"><input id="newPass" type="password" placeholder="Password Baru (min 4)" class="w-full h-11 rounded-xl border-2 border-zinc-100 bg-zinc-50 px-4 text-[13px]"><input id="newPass2" type="password" placeholder="Ulang Password Baru" class="w-full h-11 rounded-xl border-2 border-zinc-100 bg-zinc-50 px-4 text-[13px]"><div id="perr" class="text-[11px] text-red-600"></div><button onclick="handleGantiPass()" class="w-full h-11 rounded-xl bg-zinc-900 text-white font-bold text-[13px]">Simpan Password Baru</button></div></div>` : ""}
+      <div class="rounded-[20px] bg-white border p-4 flex gap-2">
+        <select onchange="filterBulan=this.value;render()" class="flex-1 h-11 rounded-xl border-2 border-zinc-100 bg-zinc-50 px-4 text-[13px] font-bold"><option value="all" ${filterBulan==='all'?'selected':''}>Semua Bulan</option>${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${filterBulan==i+1?'selected':''}>${['','Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][i+1]}</option>`).join('')}</select>
+        <select onchange="filterTahun=this.value;render()" class="flex-1 h-11 rounded-xl border-2 border-zinc-100 bg-zinc-50 px-4 text-[13px] font-bold"><option value="all" ${filterTahun==='all'?'selected':''}>Semua Tahun</option><option value="2024" ${filterTahun==='2024'?'selected':''}>2024</option><option value="2025" ${filterTahun==='2025'?'selected':''}>2025</option><option value="2026" ${filterTahun==='2026'?'selected':''}>2026</option></select>
+        <button onclick="fetchData()" class="h-11 w-11 rounded-xl bg-zinc-900 text-white grid place-items-center">↻</button>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div class="rounded-[20px] bg-zinc-900 text-white p-5"><div class="text-[10px] uppercase opacity-60 font-bold tracking-wide">TOTAL JAM • ${labelBulan.toUpperCase()}</div><div class="text-[32px] font-bold mt-2 leading-none">${totalJam}</div><div class="text-[11px] opacity-60 mt-2">${data.length} hari lembur</div></div>
+        <div class="rounded-[20px] bg-green-600 text-white p-5"><div class="text-[10px] uppercase opacity-70 font-bold tracking-wide">TOTAL TUL • ${labelBulan.toUpperCase()}</div><div class="text-[32px] font-bold mt-2 leading-none">${totalTUL}</div><div class="text-[11px] opacity-70 mt-2">8 jam = 17 TUL</div></div>
+      </div>
+
+      <div class="rounded-[24px] bg-white border shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b bg-zinc-50 flex justify-between items-center"><div class="font-bold text-[14px]">Riwayat TUL Saya - ${labelBulan}</div><div class="text-[11px] bg-zinc-900 text-white px-3 py-1 rounded-full font-bold">${data.length} data</div></div>
+        <div class="divide-y">
+          ${data.length===0?`<div class="py-16 text-center"><div class="w-12 h-12 bg-zinc-100 rounded-full grid place-items-center mx-auto mb-3">📅</div><div class="text-zinc-500 font-medium text-[13px]">Belum ada data lembur</div><div class="text-[11px] text-zinc-400 mt-1">Data diinput oleh admin</div></div>`:
+            data.map(r=>`<div class="px-5 py-4 flex items-center justify-between"><div><div class="font-bold text-[14px]">📅 ${formatTanggal(r.tanggal)}</div><div class="flex gap-2 mt-1.5"><span class="px-3 py-1 rounded-full bg-zinc-100 border text-[11px] font-bold">${r.jam} jam</span><span class="px-3 py-1 rounded-full bg-green-600 text-white text-[11px] font-bold">${r.tul} TUL</span></div></div><div class="text-[10px] text-zinc-400">dari admin</div></div>`).join('')}
+        </div>
+        ${data.length>0?`<div class="px-5 py-3 bg-zinc-50 border-t flex justify-between text-[11px] font-bold text-zinc-600"><span>${labelBulan} ${filterTahun}</span><span>${totalJam} jam • ${totalTUL} TUL</span></div>`:''}
+      </div>
+
+      
+    </div>
+  </div>`;
+}
+fetchData();
+</script>
+<script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body>
+</html>
