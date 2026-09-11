@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="id">
+<head><style>
+@font-face {
+  font-family: "Optimistic";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("/fonts/OptimisticAI_VF_Optimized.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Optimistic Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/OptimisticMono_W_TextRegular.woff2") format("woff2");
+}
+:where(html) {
+  font-family: "Optimistic", system-ui, sans-serif;
+}
+:where(code, pre, kbd, samp) {
+  font-family: "Optimistic Mono", ui-monospace, monospace;
+}
+</style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KARYAWAN AREA EF - Logo Baru</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>body{font-family:Inter,sans-serif}</style>
+</head>
+<body class="bg-[#f6f5f4]">
+<div id="app"></div>
+<script>
+const SYNC_URL='https://script.google.com/macros/s/AKfycbwVWEV9p0d23Co_3Bt0NT0z-YTWNRHh4DBCCmhGc2C9FcQbhgowLK0i0FyzQKgyRsvrYQ/exec';
+const TUL_MAP={2:3.5,3:5.5,4:7.5,6:12,7:14,8:17};
+const calcTUL=j=>TUL_MAP[j]||j*2;
+function normalizeTanggal(t){if(!t)return'';let s=String(t).trim();if(s.includes('T'))s=s.split('T')[0];if(s.includes(' '))s=s.split(' ')[0];try{const d=new Date(t);if(!isNaN(d.getTime())){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}}catch{}return s;}
+function formatTanggal(t){const p=normalizeTanggal(t).split('-');if(p.length===3)return `${p[2]}-${p[1]}-${p[0]}`;return t;}
+let currentUser=JSON.parse(localStorage.getItem('karyawan_login')||'null');
+let allData=[];let filterBulan=String(new Date().getMonth()+1);let filterTahun='2026';
+function jsonp(url){return new Promise((res,rej)=>{const cb='cb_'+Date.now()+Math.random().toString(36).slice(2);window[cb]=d=>{delete window[cb];document.getElementById(cb)?.remove();res(d);};const s=document.createElement('script');s.id=cb;s.src=url+(url.includes('?')?'&':'?')+'callback='+cb+'&t='+Date.now();s.onerror=()=>{delete window[cb];s.remove();rej(new Error('fail'));};document.body.appendChild(s);setTimeout(()=>{if(window[cb]){delete window[cb];s.remove();rej(new Error('Timeout'));}},12000);});}
+async function fetchData(){try{const j=await jsonp(SYNC_URL+'?action=read');if(Array.isArray(j)){let raw=j.map(r=>({tanggal:r.tanggal,tanggalNorm:normalizeTanggal(r.tanggal),nama:r.nama||r.nik,jam:Number(r.jam||0),tul:calcTUL(Number(r.jam||0))})).filter(x=>x.nama);const m=new Map();raw.forEach(r=>{const k=`${r.tanggalNorm}|${r.jam}|${String(r.nama).toLowerCase().trim()}`;if(!m.has(k))m.set(k,r);});allData=Array.from(m.values());}}catch(e){}render();}
+function login(){const nama=document.getElementById('nama').value.trim();const pass=document.getElementById('pass').value.trim();const def=[{nama:'Nia',pass:'1234'},{nama:'Aditya',pass:'1234'},{nama:'Anisa',pass:'1234'},{nama:'Aaf',pass:'1234'},{nama:'Syarif',pass:'1234'},{nama:'Budi',pass:'1234'},{nama:'Topik',pass:'1234'},{nama:'Yudi',pass:'1234'},{nama:'Dozen',pass:'1234'},{nama:'Putri',pass:'1234'},{nama:'Arief',pass:'1234'},{nama:'Anah',pass:'1234'},{nama:'Supriyadi',pass:'1234'},{nama:'Eka',pass:'1234'},{nama:'Nely',pass:'1234'},{nama:'Zaelani',pass:'1234'}];const list=JSON.parse(localStorage.getItem('rk_kar_admin_nonik')||'[]');const all=[...def,...list];const found=all.find(x=>x.nama.toLowerCase()===nama.toLowerCase()&&x.pass===pass);if(found||(nama&&pass)){currentUser={nama:found?found.nama:nama,pass:pass};localStorage.setItem('karyawan_login',JSON.stringify(currentUser));fetchData();}else document.getElementById('err').innerText='Nama/password salah';}
+function logout(){localStorage.removeItem('karyawan_login');currentUser=null;render();}
+function filteredData(){if(!currentUser)return[];let d=allData.filter(x=>x.nama.toLowerCase()===currentUser.nama.toLowerCase());const mm=new Map();d.forEach(r=>{const k=`${r.tanggalNorm}|${r.jam}|${String(r.nama).toLowerCase().trim()}`;if(!mm.has(k))mm.set(k,r);});d=Array.from(mm.values());if(filterBulan!=='all'){d=d.filter(x=>{const m=(x.tanggalNorm||normalizeTanggal(x.tanggal)).split('-')[1];return String(parseInt(m))===String(parseInt(filterBulan));});}if(filterTahun!=='all'){d=d.filter(x=>{const y=(x.tanggalNorm||normalizeTanggal(x.tanggal)).split('-')[0];return String(y)===filterTahun;});}return d;}
+function render(){
+const app=document.getElementById('app');
+if(!currentUser){
