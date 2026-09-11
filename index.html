@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="id">
+<head><style>
+@font-face {
+  font-family: "Optimistic";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("/fonts/OptimisticAI_VF_Optimized.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Optimistic Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/OptimisticMono_W_TextRegular.woff2") format("woff2");
+}
+:where(html) {
+  font-family: "Optimistic", system-ui, sans-serif;
+}
+:where(code, pre, kbd, samp) {
+  font-family: "Optimistic Mono", ui-monospace, monospace;
+}
+</style>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>KARYAWAN AREA EF</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>body{font-family:Inter,sans-serif}</style>
+</head>
+<body class="bg-[#f6f5f4] min-h-screen">
+<div id="app"></div>
+<script>
+const SYNC_URL = 'https://script.google.com/macros/s/AKfycbwr3utIlkimCQcJln2Gug7D0XOypnazzboyFiv5oZFFOf_Hk_XGyhKm9G2sx0Su1LU/exec';
+const TUL_MAP={2:3.5,3:5.5,4:7.5,6:12,7:14,8:17};
+const calcTUL=j=>TUL_MAP[j]||j*2;
+function normalizeTanggal(t){ if(!t) return ''; let s=String(t).trim(); if(s.includes('T')) s=s.split('T')[0]; try{const d=new Date(t); if(!isNaN(d)) return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}catch{} return s; }
+function formatTanggal(t){ const p=normalizeTanggal(t).split('-'); if(p.length===3) return `${p[2]}-${p[1]}-${p[0]}`; return t; }
+let currentUser = localStorage.getItem('karyawan_user')||'';
+let allData=[]; let myData=[]; let syncStatus='● Sinkron';
+
+function jsonp(url){ return new Promise((resolve,reject)=>{ const cb='cb_'+Date.now(); window[cb]=(d)=>{delete window[cb]; document.getElementById(cb)?.remove(); resolve(d);}; const s=document.createElement('script'); s.id=cb; s.src=url+(url.includes('?')?'&':'?')+'callback='+cb+'&t='+Date.now(); s.onerror=()=>{delete window[cb]; s.remove(); reject(new Error('Gagal koneksi'));}; document.body.appendChild(s); setTimeout(()=>{ if(window[cb]){delete window[cb]; s.remove(); reject(new Error('Timeout'));} },10000); }); }
+
+async function fetchMyData(){
+  if(!currentUser) return;
+  syncStatus='Memuat...'; render();
+  try{
+    const j = await jsonp(SYNC_URL+'?action=read');
+    if(Array.isArray(j)){
+      allData = j.map(r=>({ tanggal:r.tanggal, tanggalNorm: normalizeTanggal(r.tanggal), nama:(r.nama||r.nik||'').trim(), jam:Number(r.jam||0), tul:calcTUL(Number(r.jam||0)) }));
+      myData = allData.filter(x=> x.nama.toLowerCase()===currentUser.toLowerCase()).sort((a,b)=> new Date(b.tanggalNorm)-new Date(a.tanggalNorm));
+      syncStatus='● Sinkron - '+myData.length+' data';
+    } else syncStatus='Offline';
+  }catch(e){ syncStatus='Offline - '+e.message; }
+  render();
+}
+
+function login(){
+  const n = document.getElementById('nama').value.trim();
+  const p = document.getElementById('pass').value.trim();
+  if(!n) return document.getElementById('err').innerText='Isi nama karyawan';
+  if(!p) return document.getElementById('err').innerText='Isi password';
+  // validasi password tetap 1234, tapi tidak ditampilkan di UI
+  if(p!=='1234'){ document.getElementById('err').innerText='Password salah'; return; }
+  currentUser=n;
+  localStorage.setItem('karyawan_user', n);
+  fetchMyData();
+}
+
+function logout(){ localStorage.removeItem('karyawan_user'); currentUser=''; allData=[]; myData=[]; render(); }
+
+function render(){
+  const app=document.getElementById('app');
+  if(!currentUser){
+    app.innerHTML=`
+    <div class="min-h-screen grid place-items-center p-4">
+      <div class="w-full max-w-[380px] rounded-[32px] bg-white border shadow-xl p-8">
+        <div class="text-center mb-8">
+          <div class="w-14 h-14 rounded-[16px] bg-zinc-900 text-white grid place-items-center font-black text-[20px] mx-auto mb-4">EF</div>
+          <div class="font-black text-[22px] tracking-tight">AREA EF</div>
+          <div class="text-[11px] font-bold text-zinc-500 uppercase tracking-[0.2em] mt-1">Karyawan Access</div>
+        </div>
+        <div class="space-y-3">
+          <input id="nama" placeholder="Nama Karyawan" autocomplete="off" class="w-full h-[56px] rounded-[16px] border-2 border-zinc-100 bg-zinc-50 px-5 text-[15px] font-semibold focus:border-zinc-900 focus:bg-white outline-none transition">
+          <input id="pass" type="password" placeholder="Password" class="w-full h-[56px] rounded-[16px] border-2 border-zinc-100 bg-zinc-50 px-5 text-[15px] font-semibold focus:border-zinc-900 focus:bg-white outline-none transition">
+          <div id="err" class="text-[12px] text-red-600 font-bold min-h-[16px]"></div>
+          <button onclick="login()" class="w-full h-[56px] rounded-[18px] bg-zinc-900 text-white font-bold text-[15px] shadow-lg hover:bg-black transition">Masuk</button>
+        </div>
+        <div class="text-[10px] text-zinc-400 text-center mt-6 leading-relaxed">Login menggunakan nama yang terdaftar di admin.<br>Hubungi admin jika tidak bisa masuk.</div>
+      </div>
+    </div>`;
+    return;
+  }
+  const totalJam = myData.reduce((s,r)=>s+Number(r.jam),0);
+  const totalTUL = myData.reduce((s,r)=>s+Number(r.tul),0);
+  app.innerHTML=`
+  <div class="min-h-screen bg-[#f6f5f4]">
+    <div class="sticky top-0 z-10 bg-white/80 backdrop-blur border-b">
+      <div class="max-w-[560px] mx-auto px-6 h-[64px] flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full bg-zinc-900 text-white grid place-items-center font-black text-[13px]">${currentUser.charAt(0).toUpperCase()}</div>
+          <div><div class="font-bold text-[14px] leading-none">${currentUser}</div><div class="text-[11px] text-zinc-500 font-bold mt-1">${syncStatus}</div></div>
+        </div>
+        <button onclick="logout()" class="h-9 px-4 rounded-full bg-zinc-100 font-bold text-[12px]">Keluar</button>
+      </div>
+    </div>
+    <div class="max-w-[560px] mx-auto p-4 space-y-4">
+      <div class="grid grid-cols-2 gap-3">
+        <div class="rounded-[28px] bg-zinc-900 text-white p-6"><div class="text-[10px] opacity-60 font-bold uppercase tracking-widest">Total TUL Saya</div><div class="text-[34px] font-black mt-2">${totalTUL}</div><div class="text-[12px] opacity-60 mt-1">${myData.length} transaksi</div></div>
+        <div class="rounded-[28px] bg-white border p-6"><div class="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Total Jam</div><div class="text-[34px] font-black mt-2">${totalJam}</div><div class="text-[12px] text-zinc-500 mt-1">jam lembur</div></div>
+      </div>
+      <div class="flex gap-2"><button onclick="fetchMyData()" class="h-11 px-5 rounded-full bg-white border font-bold text-[12px]">↻ Refresh</button><div class="h-11 px-5 rounded-full bg-zinc-100 grid place-items-center font-bold text-[11px] text-zinc-600">Hanya data ${currentUser}</div></div>
+      <div class="rounded-[28px] bg-white border overflow-hidden">
+        <div class="px-6 py-4 border-b flex justify-between items-center"><div class="font-bold text-[14px]">Riwayat Lembur Saya</div><div class="text-[11px] bg-zinc-100 px-3 py-1 rounded-full font-bold">${myData.length}</div></div>
+        ${myData.length===0?`<div class="p-12 text-center"><div class="text-[14px] font-bold text-zinc-500">Belum ada data lembur</div><div class="text-[12px] text-zinc-400 mt-1">Data akan muncul setelah admin input untuk nama ${currentUser}</div></div>`:`
+        <div class="divide-y">
+          ${myData.map(r=>`<div class="px-6 py-4 flex justify-between items-center"><div><div class="font-bold text-[14px]">${formatTanggal(r.tanggal)}</div><div class="text-[11px] text-zinc-500 mt-0.5">${r.jam} jam kerja lembur</div></div><div class="text-right"><div class="h-8 px-4 rounded-full bg-zinc-900 text-white text-[12px] font-bold grid place-items-center">${r.tul} TUL</div><div class="text-[10px] text-zinc-400 mt-1 font-mono">${r.tanggalNorm}</div></div></div>`).join('')}
+        </div>`}
+      </div>
+      <div class="text-[10px] text-zinc-400 text-center pb-10">Data diambil langsung dari Admin AREA EF. Anda tidak dapat melihat data karyawan lain.</div>
+    </div>
+  </div>`;
+}
+
+render();
+if(currentUser) fetchMyData();
+</script>
+<script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body>
+</html>
