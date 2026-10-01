@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="id"><head><style>
+@font-face {
+  font-family: "Optimistic";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("/fonts/OptimisticAI_VF_Optimized.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Optimistic Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/OptimisticMono_W_TextRegular.woff2") format("woff2");
+}
+:where(html) {
+  font-family: "Optimistic", system-ui, sans-serif;
+}
+:where(code, pre, kbd, samp) {
+  font-family: "Optimistic Mono", ui-monospace, monospace;
+}
+</style><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>AREA EF</title>
+<script src="https://cdn.tailwindcss.com">
+
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>body{font-family:Inter,sans-serif;background:linear-gradient(135deg,#ecfeff 0%,#cffafe 50%,#a5f3fc 100%);min-height:100vh} .aqua{background:linear-gradient(135deg,#0891b2 0%,#0e7490 100%)}</style>
+<style>
+.led-ring{
+  background: conic-gradient(from 0deg, transparent 0deg, #ffffff 20deg, transparent 40deg, transparent 180deg, #ccfbf1 200deg, transparent 220deg);
+  animation: spin 2s linear infinite;
+  mask: radial-gradient(circle, transparent 36px, black 37px, black 42px, transparent 43px);
+}
+@keyframes spin{ to{ transform: rotate(360deg); } }
+.led-dot{
+  position:absolute; width:5px; height:5px; border-radius:50%; background:#ffffff; box-shadow:0 0 6px #ffffff;
+  top:50%; left:50%;
+}
+.led-dot.active{ background:#fff; box-shadow:0 0 10px #fff, 0 0 14px #ccfbf1; transform: scale(1.4); }
+.led-dot.off{ opacity:0.25; }
+.hb-banner{ animation: hbGlow 3.2s ease-in-out infinite; position:relative; overflow:hidden; }
+@keyframes hbGlow{ 0%,100%{ box-shadow:0 4px 14px rgba(0,0,0,.25);} .hb-banner.tema-idulfitri{ background: linear-gradient(135deg, #065f46 0%, #047857 35%, #d97706 100%) !important; }
+.hb-banner.tema-idadha{ background: linear-gradient(135deg, #064e3b 0%, #065f46 60%, #0f766e 100%) !important; }
+.hb-banner.tema-kemerdekaan{ background: linear-gradient(135deg, #dc2626 0%, #b91c1c 70%, #7f1d1d 100%) !important; border-left:5px solid #fff; }
+.hb-banner.tema-pahlawan{ background: linear-gradient(135deg, #1c1917 0%, #7f1d1d 55%, #78350f 100%) !important; }
+.hb-banner.tema-natal{ background: linear-gradient(135deg, #991b1b 0%, #166534 50%, #7f1d1d 100%) !important; }
+.hb-banner.tema-imlek{ background: linear-gradient(135deg, #991b1b 0%, #dc2626 45%, #f59e0b 100%) !important; }
+.hb-banner.tema-nyepi{ background: linear-gradient(135deg, #1e293b 0%, #334155 60%, #44403c 100%) !important; }
+.hb-banner.tema-batik{ background: linear-gradient(135deg, #78350f 0%, #b45309 50%, #92400e 100%) !important; }
+.hb-banner.tema-merah{ background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%) !important; }
+.hb-banner.tema-hijau{ background: linear-gradient(135deg, #047857 0%, #0f766e 100%) !important; }
+.hb-banner.tema-emas{ background: linear-gradient(135deg, #d97706 0%, #ca8a04 100%) !important; }
+.hb-decor{ position:absolute; right:12px; top:50%; transform:translateY(-50%); font-size:30px; opacity:0.20; pointer-events:none; line-height:1; }
+.hb-decor-float{ animation: hbFloat 3s ease-in-out infinite; }
+@keyframes hbFloat{ 0%,100%{ transform:translateY(-50%) } 50%{ transform:translateY(-62%) } }
+</style>
+
+</head><body><div id="app"></div><script>
+
+const SYNC_URL='https://script.google.com/macros/s/AKfycbwr3utIlkimCQcJln2Gug7D0XOypnazzboyFiv5oZFFOf_Hk_XGyhKm9G2sx0Su1LU/exec';
