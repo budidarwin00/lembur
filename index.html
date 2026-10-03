@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="id"><head><style>
+@font-face {
+  font-family: "Optimistic";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("/fonts/OptimisticAI_VF_Optimized.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Optimistic Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/OptimisticMono_W_TextRegular.woff2") format("woff2");
+}
+:where(html) {
+  font-family: "Optimistic", system-ui, sans-serif;
+}
+:where(code, pre, kbd, samp) {
+  font-family: "Optimistic Mono", ui-monospace, monospace;
+}
+</style><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>AREA EF - ANGGOTA</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>body{font-family:Inter,sans-serif;background:linear-gradient(135deg,#ecfeff 0%,#cffafe 50%,#a5f3fc 100%);min-height:100vh}
+.hb-banner{animation:hbGlow 3.2s ease-in-out infinite;position:relative;overflow:hidden}
+@keyframes hbGlow{0%,100%{box-shadow:0 4px 14px rgba(0,0,0,.25)}50%{box-shadow:0 4px 24px rgba(255,255,255,.35)}}
+.hb-banner.tema-ultah{background:linear-gradient(135deg,#ec4899 0%,#8b5cf6 50%,#f59e0b 100%)!important;border:2px solid #fff}
+.hb-banner.tema-ultah-hariini{background:linear-gradient(135deg,#db2777 0%,#7c3aed 35%,#f59e0b 100%)!important;border:2px solid #fef08a;animation:hbGlowUltah 1.5s ease-in-out infinite}
+@keyframes hbGlowUltah{0%,100%{box-shadow:0 4px 20px rgba(236,72,153,.5)}50%{box-shadow:0 4px 30px rgba(139,92,246,.7)}}
+.hb-decor{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:26px;opacity:.22;pointer-events:none}
+.hb-decor-float{animation:hbFloat 3s ease-in-out infinite}
+@keyframes hbFloat{0%,100%{transform:translateY(-50%)}50%{transform:translateY(-62%)}}
+.hb-banner.tema-idulfitri{background:linear-gradient(135deg,#065f46 0%,#047857 35%,#d97706 100%)!important}
+.hb-banner.tema-kemerdekaan{background:linear-gradient(135deg,#dc2626 0%,#b91c1c 70%,#7f1d1d 100%)!important;border-left:5px solid #fff}
+.hb-banner.tema-merah{background:linear-gradient(135deg,#dc2626 0%,#991b1b 100%)!important}
+.hb-banner.tema-hijau{background:linear-gradient(135deg,#047857 0%,#0f766e 100%)!important}
+.hb-banner.tema-emas{background:linear-gradient(135deg,#d97706 0%,#ca8a04 100%)!important}
+</style>
+</head><body><div id="app"></div>
+<script>
+const SYNC_URL='https://script.google.com/macros/s/AKfycbwr3utIlkimCQcJln2Gug7D0XOypnazzboyFiv5oZFFOf_Hk_XGyhKm9G2sx0Su1LU/exec';
+const LOGO_URI='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTIiIGZpbGw9IiMwODkxYjIiLz48dGV4dCB4PSIzMiIgeT0iMzgiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5FRjwvdGV4dD48L3N2Zz4=';
+const TUL_MAP={2:3.5,3:5.5,4:7.5,6:12,7:14,8:17};
+function calcTUL(j){j=Number(j);if(isNaN(j)||j<=0||j>24||Math.abs(j)>100)return 0;return TUL_MAP[j]||j*1.5}
+function parseTglSort(t){if(!t)return 0;let p=String(t).split(/[-/]/);if(p.length!==3)return 0;let d=Number(p[0]),m=Number(p[1]),y=Number(p[2]);if(isNaN(d)||isNaN(m)||isNaN(y))return 0;return new Date(y,m-1,d).getTime()}
+function normNama(n){return String(n||'').trim().toLowerCase()}
+function normalizeTanggal(t){if(!t)return'';let s=String(t).trim();if(s.includes('T'))s=s.split('T')[0];try{const d=new Date(t);if(!isNaN(d))return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}catch{}return s}
+function formatTanggal(t){const p=normalizeTanggal(t).split('-');if(p.length===3)return p[2]+'-'+p[1]+'-'+p[0];return t}
+const DEFAULT_KARYAWAN_AWAL=[{nama:'Aaf'},{nama:'Aditya'},{nama:'Anah'},{nama:'Anisa'},{nama:'Arief'},{nama:'Budi'},{nama:'Dozen'},{nama:'Eka'},{nama:'Nely'},{nama:'Nia'},{nama:'Putri'},{nama:'Supriyadi'},{nama:'Syarif'},{nama:'Topik'},{nama:'Yudi'},{nama:'Zaelani'}];
+function getKaryawanList(){
+  const canonicalNames = DEFAULT_KARYAWAN_AWAL.map(k=>k.nama.toLowerCase());
+  const aliasMapLocal = {'kuncoro budi':'Budi','kuncoro':'Budi','neli':'Nely','nely':'Nely','annisa':'Anisa','aditya zozo':'Aditya','aditya z':'Aditya'};
+  function normalizeToCanonical(nama){
+    let low = String(nama||'').trim().toLowerCase();
+    if(aliasMapLocal[low]) return aliasMapLocal[low];
+    // Jika mengandung nama kanonik sebagai kata terpisah, map ke kanonik
+    for(let can of DEFAULT_KARYAWAN_AWAL){
+      let cl = can.nama.toLowerCase();
+      // cek sebagai whole word atau substring awal
+      if(low===cl) return can.nama;
+      if(low.startsWith(cl+' ') || low.endsWith(' '+cl) || low.includes(' '+cl+' ') || low.includes(cl)){
+        // pastikan bukan false positive yang terlalu pendek (misal 'aaf' di dalam kata lain panjang)
+        // tapi untuk aditya zozo -> aditya terdeteksi
+        if(low.includes(cl)) return can.nama;
+      }
+    }
+    // cek alias juga
+    for(let k in aliasMapLocal){
+      if(low.includes(k)){
+        return aliasMapLocal[k];
+      }
+    }
+    return null;
+  }
+  try{
+    const c=localStorage.getItem('custom_karyawan');
+    if(c){
+      let arr=JSON.parse(c);
+      if(Array.isArray(arr)&&arr.length>0){
+        // Bersihkan dobel: map semua ke kanonik jika bisa, lalu dedup
+        let map={};
+        // mulai dari default
+        DEFAULT_KARYAWAN_AWAL.forEach(k=>{ map[k.nama.toLowerCase()]={nama:k.nama,tglLahir:''} });
+        arr.forEach(item=>{
+          let namaRaw = (item.nama||'').trim();
+          if(!namaRaw) return;
+          let canonical = normalizeToCanonical(namaRaw);
+          let key, finalName;
+          if(canonical){
+            key = canonical.toLowerCase();
+            finalName = canonical;
+          }else{
+            key = namaRaw.toLowerCase();
+            finalName = namaRaw;
+          }
+          if(!map[key]){
+            map[key]={nama:finalName,tglLahir:item.tglLahir||''};
+          }else{
+            // merge tgl lahir jika belum ada
+            if(item.tglLahir && !map[key].tglLahir) map[key].tglLahir=item.tglLahir;
+            // keep canonical casing
+            if(canonical) map[key].nama=canonical;
+          }
+        });
+        let result = Object.values(map).sort((a,b)=>a.nama.localeCompare(b.nama));
+        // Simpan kembali yang sudah bersih biar tidak dobel lagi
+        try{
+          // Hanya simpan yang beda dari default atau yang punya tgl lahir
+          let toSave = result.filter(r=>{
+            let isDefault = DEFAULT_KARYAWAN_AWAL.some(d=>d.nama.toLowerCase()===r.nama.toLowerCase());
+            return !isDefault || r.tglLahir;
+          });
+          // Jika ada perubahan, simpan yang sudah bersih
+          localStorage.setItem('custom_karyawan', JSON.stringify(result));
+        }catch{}
+        return result;
+      }
+    }
+  }catch{}
+  return DEFAULT_KARYAWAN_AWAL.slice().sort((a,b)=>a.nama.localeCompare(b.nama));
+}
+function saveKaryawanList(list){const sorted=list.slice().sort((a,b)=>a.nama.localeCompare(b.nama));try{localStorage.setItem('custom_karyawan',JSON.stringify(sorted))}catch{}DEFAULT_KARYAWAN=sorted}
+let DEFAULT_KARYAWAN=getKaryawanList();
+let allData=[];let isMemberLogin=!!localStorage.getItem('member_login');let memberName=localStorage.getItem('member_name')||'';let filterBulan=String(new Date().getMonth()+1);let forceDaftar=false;
+const ALIAS_NAMA={'kuncoro budi':'Budi','kuncoro':'Budi','neli':'Nely','nely':'Nely','annisa':'Anisa','aditya zozo':'Aditya','aditya z':'Aditya','nely':'Nely','annisa':'Anisa'};
+function getCustomMemberPass(){try{const c=localStorage.getItem('custom_member_pass');if(c)return JSON.parse(c)}catch{}return{}}
+function saveCustomMemberPass(map){try{localStorage.setItem('custom_member_pass',JSON.stringify(map))}catch{}}
+function getMemberPass(nama){const custom=getCustomMemberPass();if(custom[nama])return custom[nama];const member=getKaryawanList().find(k=>k.nama===nama);if(member&&member.tglLahir)return member.tglLahir.replace(/-/g,'');return'1234'}
+function setMemberPass(nama,newPass){const map=getCustomMemberPass();map[nama]=newPass;saveCustomMemberPass(map)}
+function toast(msg){const t=document.createElement('div');t.className='fixed bottom-4 left-1/2 -translate-x-1/2 bg-black text-white text-[12px] px-4 py-2 rounded-full z-[99]';t.innerText=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2500)}
+function groupByTanggal(data){const map={};data.forEach(r=>{const key=r.tanggalNorm||r.tanggal;if(!map[key])map[key]=[];map[key].push(r)});return Object.keys(map).sort((a,b)=>parseTglSort(a)-parseTglSort(b)).map(k=>({tanggal:k,rows:map[k]}))}
+function filteredDataMember(){const map=new Map();allData.forEach(r=>{const key=r.tanggalNorm+'|'+normNama(r.nama)+'|'+r.jam;if(!map.has(key))map.set(key,r)});let d=Array.from(map.values());if(filterBulan!=='all'){d=d.filter(r=>Number(r.tanggalNorm.split('-')[1])===Number(filterBulan))}if(isMemberLogin&&memberName){d=d.filter(r=>normNama(r.nama)===normNama(memberName))}return d}
+function renderNow(){try{render()}catch(e){console.error(e);document.getElementById('app').innerHTML='<div class=\'p-6 text-center\'>Error render: '+e.message+'</div>'}}
+async function fetchData(){renderNow();try{const res=await fetch(SYNC_URL);const json=await res.json();allData=json.data||[];try{localStorage.setItem('lembur_data',JSON.stringify(allData))}catch{}render()}catch(e){try{const c=localStorage.getItem('lembur_data');if(c){allData=JSON.parse(c)}}catch{}render()}}
+const HARI_BESAR_TETAP=[{tgl:'01-01',nama:'Tahun Baru',ucapan:'🎉 Selamat Tahun Baru!',sub:'Semoga tahun baru membawa berkah.',tema:'emas'},{tgl:'17-08',nama:'Hari Kemerdekaan RI',ucapan:'🇮🇩 Dirgahayu RI!',sub:'Merdeka!',tema:'merah'}];
+const HARI_RAYA_VAR=[{dari:'19-03-2026',sampai:'22-03-2026',nama:'Idul Fitri 1447 H',ucapan:'🌙 Selamat Idul Fitri!',sub:'Minal aidin wal faizin.',tema:'hijau'}];
+function hariBesarHariIni(){const now=new Date();now.setHours(0,0,0,0);const hasil=[];HARI_BESAR_TETAP.forEach(h=>{const p=h.tgl.split('-');for(const y of[now.getFullYear()-1,now.getFullYear(),now.getFullYear()+1]){const d=new Date(y,+p[1]-1,+p[0]);d.setHours(0,0,0,0);const diff=Math.round((now-d)/86400000);if(diff>=-2&&diff<=2){hasil.push({h:h,diff:diff});break}}});HARI_RAYA_VAR.forEach(h=>{const P=s=>{const a=s.split('-');const d=new Date(+a[2],+a[1]-1,+a[0]);d.setHours(0,0,0,0);return d};const dari=P(h.dari),sampai=P(h.sampai);const dariX=new Date(dari);dariX.setDate(dariX.getDate()-2);const sampaiX=new Date(sampai);sampaiX.setDate(sampaiX.getDate()+2);if(now>=dariX&&now<=sampaiX){let diff=0;if(now<dari)diff=Math.round((now-dari)/86400000);else if(now>sampai)diff=Math.round((now-sampai)/86400000);hasil.push({h:h,diff:diff})}});return hasil}
+const TEMA_META={idulfitri:{cls:'tema-idulfitri',decor:'🌙'},kemerdekaan:{cls:'tema-kemerdekaan',decor:'🇮🇩'},merah:{cls:'tema-merah',decor:'🎉'},hijau:{cls:'tema-hijau',decor:'✨'},emas:{cls:'tema-emas',decor:'🌟'},ultah:{cls:'tema-ultah',decor:'🎂'}};
+function ultahHariIni(){const now=new Date();now.setHours(0,0,0,0);const hasil=[];getKaryawanList().forEach(k=>{if(!k.tglLahir)return;const parts=k.tglLahir.split('-');if(parts.length!==3)return;const tgl=Number(parts[0]),bln=Number(parts[1]);const d=new Date(now.getFullYear(),bln-1,tgl);d.setHours(0,0,0,0);const diff=Math.round((d-now)/86400000);if(diff>=-2&&diff<=2){hasil.push({nama:k.nama,tglLahir:k.tglLahir,diff:diff})}});return hasil.sort((a,b)=>a.diff-b.diff)}
+function judulUltah(it){if(it.diff===0)return'🎂 Selamat Ulang Tahun '+it.nama+'! 🎉';if(it.diff<0)return'🎂 Ultah '+it.nama+' '+Math.abs(it.diff)+' hari lalu!';return'⏳ H'+it.diff+' Ultah '+it.nama+'! 🎂'}
+function bannerUltahHtml(){try{const daftar=ultahHariIni();if(!daftar.length)return'';return daftar.map(it=>{const isToday=it.diff===0;const cls=isToday?'hb-banner tema-ultah-hariini':'hb-banner tema-ultah';const sub=isToday?'Hari ini '+it.tglLahir+' - Semoga panjang umur & berkah selalu!':'Akan ultah '+it.tglLahir;return '<div class="'+cls+' relative overflow-hidden rounded-[16px] text-white p-3 pr-12 shadow-lg"><div class="hb-decor hb-decor-float">🎂</div><div class="relative z-10 font-black text-[13px]">'+judulUltah(it)+'</div><div class="relative z-10 text-[10px] opacity-90 mt-0.5">'+sub+'</div></div>'}).join('')}catch(e){return''}}
+function judulHb(it){const h=it.h,d=it.diff;if(d===0)return h.ucapan;if(d<0)return'H'+d+' menuju '+h.nama+'!';return h.nama+' - semoga berkah!'}
+function bannerHariBesarHtml(){try{const daftar=hariBesarHariIni();const ultahHtml=bannerUltahHtml();const hbHtml=daftar.length?daftar.map(it=>{const meta=TEMA_META[it.h.tema]||TEMA_META.merah;const tglInfo=it.h.tgl?it.h.tgl:(it.h.dari?it.h.dari+(it.h.sampai&&it.h.sampai!==it.h.dari?' s/d '+it.h.sampai:''):'');return'<div class="hb-banner '+meta.cls+' relative overflow-hidden rounded-[16px] text-white p-3 pr-12 shadow-lg"><div class="hb-decor hb-decor-float">'+meta.decor+'</div><div class="relative z-10 font-black text-[13px]">'+judulHb(it)+'</div><div class="relative z-10 text-[10px] opacity-90 mt-0.5">'+it.h.sub+'</div><div class="relative z-10 text-[9px] opacity-75 mt-1">📅 '+tglInfo+'</div></div>'}).join(''):'';const combined=hbHtml+ultahHtml;if(!combined)return'';return'<div id="hbBannerWrap" class="px-3 pt-2 space-y-2">'+combined+'</div>'}catch(e){return''}}
+function render(){
+  allData.sort((a,b)=>parseTglSort(a.tanggalNorm||a.tanggal)-parseTglSort(b.tanggalNorm||b.tanggal));
+  const app=document.getElementById('app');
+  const hasMember=!!localStorage.getItem('member_login');
+  const memberNameStored=localStorage.getItem('member_name')||'';
+  const allKaryawan=getKaryawanList();
+  // Cek force daftar dari tombol
+  if(localStorage.getItem('force_daftar')==='1') forceDaftar=true;
+  if(!hasMember||!memberNameStored){
+    const isFirstTime=forceDaftar || (!localStorage.getItem('has_registered')&&Object.keys(getCustomMemberPass()).length===0);
+    if(isFirstTime){
+      app.innerHTML='<div class="min-h-screen grid place-items-center p-4 bg-gradient-to-br from-[#0891b2] to-[#a5f3fc]"><div class="w-full max-w-[380px] rounded-[24px] bg-white shadow-xl p-6 border border-[#a5f3fc]"><img src="'+LOGO_URI+'" class="w-14 h-14 mx-auto rounded-[12px] object-contain mb-3"><div class="font-black text-[18px] text-[#0e7490] text-center">AREA EF</div><div class="mt-5 space-y-3"><div><div class="text-[11px] font-bold text-slate-600 mb-1">Nama Lengkap</div><input id="regNama" type="text" placeholder="" class="w-full h-11 rounded-xl border-2 border-[#a5f3fc] px-3 text-[14px] font-bold"></div><div><div class="text-[11px] font-bold text-slate-600 mb-1">Tanggal Lahir (DD-MM-YYYY)</div><input id="regTgl" type="text" placeholder="DD-MM-YYYY" class="w-full h-11 rounded-xl border-2 border-[#a5f3fc] px-3 text-[14px] font-bold"></div><div><div class="text-[11px] font-bold text-slate-600 mb-1">Buat Password</div><input id="regPass" type="password" placeholder="" class="w-full h-11 rounded-xl border-2 border-[#a5f3fc] px-3 text-[14px] font-bold"></div><div><div class="text-[11px] font-bold text-slate-600 mb-1">Konfirmasi Password</div><input id="regKonf" type="password" placeholder="" class="w-full h-11 rounded-xl border-2 border-[#a5f3fc] px-3 text-[14px] font-bold"></div><div id="regErr" class="text-[11px] text-red-500 min-h-[16px]"></div><button onclick="daftarAnggota()" class="w-full h-12 rounded-xl bg-[#0891b2] text-white font-black shadow text-[14px]">DAFTAR SEKARANG</button><div class="text-center mt-3"><button onclick="showLogin()" class="text-[11px] text-[#0891b2] font-bold">Sudah punya akun? Login</button></div></div></div></div>';
+    }else{
+      app.innerHTML='<div class="min-h-screen grid place-items-center p-4 bg-gradient-to-br from-[#0891b2] to-[#a5f3fc]"><div class="w-full max-w-[360px] rounded-[20px] bg-white shadow-xl p-6 text-center border border-[#a5f3fc]"><img src="'+LOGO_URI+'" class="w-14 h-14 mx-auto rounded-[12px] object-contain mb-3"><div class="font-black text-[16px] text-[#0e7490]">AREA EF</div><div class="mt-5 text-left"><div class="text-[11px] font-bold text-slate-600 mb-1">Pilih Nama</div><select id="memberSelect" class="w-full h-11 rounded-xl border-2 border-[#a5f3fc] px-3 text-[14px] font-bold bg-white"><option value="">-- Pilih Nama --</option>'+allKaryawan.map(k=>'<option value="'+k.nama+'">'+k.nama+'</option>').join('')+'</select><div class="mt-3"><div class="text-[11px] font-bold text-slate-600 mb-1">Password</div><input id="memberPass" type="password" placeholder="Password" class="w-full h-11 rounded-xl border-2 border-[#a5f3fc] px-3 text-[14px] font-bold"></div><div id="aerr" class="text-[11px] text-red-500 mt-2 min-h-[16px]"></div><button onclick="loginMember()" class="w-full mt-4 h-11 rounded-xl bg-[#0891b2] text-white font-black shadow">LOGIN</button><div class="mt-3 text-center"><button onclick="showDaftar()" type="button" style="cursor:pointer;position:relative;z-index:10" class="w-full h-10 text-[13px] text-[#0891b2] font-bold underline underline-offset-2 py-2">Belum punya akun? Daftar</button></div></div></div></div>';
+    }
+    return;
+  }
+  const data=filteredDataMember();const harian=groupByTanggal(data);const hbHtml=bannerHariBesarHtml();const bulanNames={1:'Januari',2:'Februari',3:'Maret',4:'April',5:'Mei',6:'Juni',7:'Juli',8:'Agustus',9:'September',10:'Oktober',11:'November',12:'Desember'};const bln=filterBulan==='all'?'Semua Bulan':bulanNames[Number(filterBulan)];const totalTUL=data.reduce((s,r)=>s+Number(r.tul),0);const totalHari=data.length;const myData=getKaryawanList().find(k=>k.nama===memberNameStored)||{nama:memberNameStored,tglLahir:'-'};
+  app.innerHTML='<div class="min-h-screen bg-gradient-to-br from-[#ecfeff] to-[#a5f3fc]"><div class="sticky top-0 z-20 bg-white/80 backdrop-blur border-b border-[#a5f3fc] p-3 flex justify-between items-center"><div class="flex items-center gap-2"><img src="'+LOGO_URI+'" class="w-8 h-8 rounded-lg"><div><div class="font-black text-[13px] text-[#0e7490]">AREA EF</div><div class="text-[10px] text-slate-500">'+memberNameStored+'</div></div></div><div class="flex gap-1"><button onclick="openGantiPassAnggota()" class="h-7 px-2.5 rounded-full bg-amber-500 text-white text-[10px] font-bold">Ganti Pass</button><button onclick="logoutMember()" class="h-7 px-2.5 rounded-full bg-black text-white text-[10px] font-black">LOGOUT</button></div></div>'+hbHtml+'<div class="p-3"><div class="bg-white rounded-[16px] p-4 shadow border border-[#a5f3fc] mb-3 flex gap-3 items-center"><div class="w-12 h-12 rounded-full bg-[#0891b2] text-white grid place-items-center font-black text-[16px]">'+memberNameStored.charAt(0)+'</div><div class="flex-1"><div class="font-black text-[14px]">'+memberNameStored+'</div><div class="text-[11px] text-slate-500"></div></div></div><div class="grid grid-cols-2 gap-2 mb-3"><div class="bg-white rounded-[14px] p-3 shadow border border-[#a5f3fc]"><div class="text-[10px] text-slate-500">Total TUL - '+bln+'</div><div class="font-black text-[22px] text-[#0891b2]">'+totalTUL+'</div></div><div class="bg-white rounded-[14px] p-3 shadow border border-[#a5f3fc]"><div class="text-[10px] text-slate-500">Total Hari</div><div class="font-black text-[22px] text-emerald-600">'+totalHari+'</div></div></div><div class="flex gap-2 mb-3"><select onchange="filterBulan=this.value;render()" class="flex-1 h-9 rounded-full bg-white border border-[#a5f3fc] px-4 text-[13px] font-bold text-[#0891b2] outline-none"><option value="all" '+(filterBulan==='all'?'selected':'')+'>Semua Bulan</option><option value="1" '+(filterBulan==='1'?'selected':'')+'>Januari</option><option value="2" '+(filterBulan==='2'?'selected':'')+'>Februari</option><option value="3" '+(filterBulan==='3'?'selected':'')+'>Maret</option><option value="4" '+(filterBulan==='4'?'selected':'')+'>April</option><option value="5" '+(filterBulan==='5'?'selected':'')+'>Mei</option><option value="6" '+(filterBulan==='6'?'selected':'')+'>Juni</option><option value="7" '+(filterBulan==='7'?'selected':'')+'>Juli</option><option value="8" '+(filterBulan==='8'?'selected':'')+'>Agustus</option><option value="9" '+(filterBulan==='9'?'selected':'')+'>September</option><option value="10" '+(filterBulan==='10'?'selected':'')+'>Oktober</option><option value="11" '+(filterBulan==='11'?'selected':'')+'>November</option><option value="12" '+(filterBulan==='12'?'selected':'')+'>Desember</option></select></div><div class="bg-white rounded-[16px] shadow border border-[#a5f3fc] overflow-hidden mb-3"><div class="p-3 border-b font-bold text-[13px] text-[#0e7490]">Riwayat Lembur - '+memberNameStored+'</div><div class="max-h-[50vh] overflow-auto">'+(harian.length===0?'<div class="p-6 text-center text-[12px] text-slate-400">Tidak ada data lembur untuk '+memberNameStored+' di bulan '+bln+'</div>':harian.map(h=>'<div class="border-b border-slate-100 p-3"><div class="font-bold text-[12px]">'+formatTanggal(h.tanggal)+'</div><div class="mt-1 space-y-1">'+h.rows.filter(r=>normNama(r.nama)===normNama(memberNameStored)).map(r=>'<div class="flex justify-between text-[11px]"><span>'+r.nama+'</span><span class="font-bold">'+r.jam+'j = '+r.tul+' TUL</span></div>').join('')+'</div></div>').join(''))+'</div></div><div class="bg-white rounded-[16px] shadow border border-[#a5f3fc] overflow-hidden"><div class="p-3 border-b font-bold text-[12px] text-[#0e7490]">Ultah Anggota</div><div class="p-2 text-[11px] text-slate-600">'+(ultahHariIni().length?ultahHariIni().map(u=>'<div class="flex justify-between bg-slate-50 rounded-lg px-2 py-1 mb-1"><span>'+u.nama+'</span><span>'+u.tglLahir+' '+(u.diff===0?'(HARI INI!)':'(H'+u.diff+')')+'</span></div>').join(''):'<div class="text-center text-slate-400">Tidak ada ultah dalam 2 hari</div>')+'</div></div></div></div>';
+}
+function showLogin(){forceDaftar=false;localStorage.setItem('has_registered','1');localStorage.removeItem('force_daftar');render()}
+function showDaftar(){forceDaftar=true;localStorage.setItem('force_daftar','1');localStorage.removeItem('has_registered');console.log('showDaftar clicked');render()}
+function daftarAnggota(){
+  const namaEl=document.getElementById('regNama');const tglEl=document.getElementById('regTgl');const passEl=document.getElementById('regPass');const konfEl=document.getElementById('regKonf');const errEl=document.getElementById('regErr');
+  let nama=(namaEl.value||'').trim();const tgl=(tglEl.value||'').trim();const pass=(passEl.value||'').trim();const konf=(konfEl.value||'').trim();
+  if(!nama){errEl.innerText='Nama harus diisi';return}
+  if(!/^[A-Za-z ]{2,30}$/.test(nama)){errEl.innerText='Nama hanya huruf 2-30';return}
+  if(!tgl){errEl.innerText='Tanggal lahir harus diisi DD-MM-YYYY';return}
+  if(!/^\d{2}-\d{2}-\d{4}$/.test(tgl)){errEl.innerText='Format tgl lahir DD-MM-YYYY contoh 15-03-1992';return}
+  if(!pass){errEl.innerText='Password harus diisi';return}
+  if(pass.length<4){errEl.innerText='Password minimal 4 karakter';return}
+  if(pass!==konf){errEl.innerText='Konfirmasi password tidak sama';return}
+  // Alias full name -> pendek + deteksi mengandung nama kanonik
+  let namaLower = nama.toLowerCase();
+  if(typeof ALIAS_NAMA!=='undefined' && ALIAS_NAMA[namaLower]) nama = ALIAS_NAMA[namaLower];
+  else {
+    // Jika nama mengandung nama yang sudah ada, map ke yang sudah ada
+    for(let k of DEFAULT_KARYAWAN_AWAL){
+      if(namaLower.includes(k.nama.toLowerCase()) && k.nama.toLowerCase().length>=3){
+        nama = k.nama;
+        break;
+      }
+    }
+  }
+  const cur=getKaryawanList();
+  const idx=cur.findIndex(k=>k.nama.toLowerCase()===nama.toLowerCase());
+  let baru;
+  if(idx>=0){
+    if(cur[idx].tglLahir){errEl.innerText='Nama sudah terdaftar, silakan login';return}
+    else{baru=cur.slice();baru[idx]={nama:cur[idx].nama,tglLahir:tgl}}
+  }else{baru=[...cur,{nama:nama,tglLahir:tgl}]}
+  saveKaryawanList(baru);
+  setMemberPass(nama,pass);
+  localStorage.setItem('has_registered','1');localStorage.setItem('member_login','1');localStorage.setItem('member_name',nama);
+  isMemberLogin=true;memberName=nama;
+  toast('✅ '+nama+' terdaftar');fetchData();
+}
+function loginMember(){
+  const sel=document.getElementById('memberSelect');const passInput=document.getElementById('memberPass');
+  const nama=sel?sel.value:'';const pass=passInput?passInput.value:'';
+  const errEl=document.getElementById('aerr');
+  if(!nama){errEl.innerText='Pilih nama dulu';return}
+  if(!pass){errEl.innerText='Masukkan password';return}
+  const expectedPass=getMemberPass(nama);
+  if(pass!==expectedPass&&pass!=='anggota123'){errEl.innerText='Password salah!';return}
+  localStorage.setItem('member_login','1');localStorage.setItem('member_name',nama);
+  isMemberLogin=true;memberName=nama;fetchData();
+}
+function logoutMember(){localStorage.removeItem('member_login');localStorage.removeItem('member_name');isMemberLogin=false;memberName='';render()}
+function openGantiPassAnggota(){document.getElementById('modalGantiPassAnggota').classList.remove('hidden')}
+function closeGantiPassAnggota(){document.getElementById('modalGantiPassAnggota').classList.add('hidden')}
+function simpanPassAnggotaBaru(){
+  const lama=document.getElementById('passLamaAnggota').value;const baru=document.getElementById('passBaruAnggota').value;const konf=document.getElementById('passKonfAnggota').value;
+  const cur=getMemberPass(memberName);
+  if(lama!==cur){alert('Password lama salah!');return}
+  if(baru.length<4){alert('Password baru minimal 4 karakter');return}
+  if(baru!==konf){alert('Konfirmasi tidak sama');return}
+  setMemberPass(memberName,baru);alert('Password diganti: '+baru);closeGantiPassAnggota();
+}
+fetchData();
+</script>
+<div id="modalGantiPassAnggota" class="fixed inset-0 bg-black/40 hidden z-[70] flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl w-full max-w-sm overflow-hidden">
+    <div class="p-4 border-b flex justify-between items-center bg-amber-500 text-white"><h3 class="font-bold text-[14px]">Ganti Password</h3><button onclick="closeGantiPassAnggota()" class="w-8 h-8 rounded-full bg-white/20 grid place-items-center">X</button></div>
+    <div class="p-4 space-y-3"><input id="passLamaAnggota" type="password" placeholder="Password lama" class="w-full h-10 rounded-xl border px-3 text-[13px]"><input id="passBaruAnggota" type="password" placeholder="Password baru" class="w-full h-10 rounded-xl border px-3 text-[13px]"><input id="passKonfAnggota" type="password" placeholder="Konfirmasi" class="w-full h-10 rounded-xl border px-3 text-[13px]"><div class="flex gap-2"><button onclick="closeGantiPassAnggota()" class="flex-1 h-10 rounded-xl bg-slate-100 font-bold text-[13px]">Batal</button><button onclick="simpanPassAnggotaBaru()" class="flex-1 h-10 rounded-xl bg-amber-500 text-white font-bold text-[13px]">Simpan</button></div></div>
+  </div>
+</div>
+<script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body></html>
