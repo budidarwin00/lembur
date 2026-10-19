@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="id"><head><style>
+@font-face {
+  font-family: "Optimistic";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("/fonts/OptimisticAI_VF_Optimized.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Optimistic Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/OptimisticMono_W_TextRegular.woff2") format("woff2");
+}
+:where(html) {
+  font-family: "Optimistic", system-ui, sans-serif;
+}
+:where(code, pre, kbd, samp) {
+  font-family: "Optimistic Mono", ui-monospace, monospace;
+}
+</style><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>AREA EF - Anggota</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{font-family:Inter,sans-serif;background:#f8fafc;min-height:100vh;transition:background 0.6s ease;}
+.aqua{background:#0e7490;}
+body.tema-ultah{ background:radial-gradient(ellipse at top, #f5d0fe 0%, #fdf4ff 40%, #fae8ff 100%) !important; }
+body.tema-ultah .aqua{ background:linear-gradient(135deg,#a21caf 0%,#ec4899 100%) !important; }
+@keyframes floatUltah{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-12px) rotate(5deg)}}
+@keyframes confettiFall{0%{transform:translateY(-10vh) rotate(0deg) scale(0);opacity:0}10%{opacity:1;transform:scale(1)}90%{opacity:0.8}100%{transform:translateY(110vh) rotate(720deg) scale(0.5);opacity:0}}
+.pernak-ultah{animation:confettiFall linear infinite !important;font-size:20px !important;filter:drop-shadow(0 2px 6px rgba(168,85,247,0.4))}
+.ultah-card{background:linear-gradient(135deg,rgba(255,255,255,0.9) 0%,rgba(250,232,255,0.9) 100%);backdrop-filter:blur(16px);border:1px solid rgba(232,121,249,0.3);box-shadow:0 8px 32px rgba(168,85,247,0.2);animation:floatUltah 3s ease-in-out infinite}
+#pernakPernik{ position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden; opacity:0.35; }
+.pernak{ position:absolute; font-size:14px; animation: jatuh 8s linear infinite; opacity:0.5; }
+@keyframes jatuh{ 0%{ transform:translateY(-10vh) rotate(0deg); } 100%{ transform:translateY(110vh) rotate(360deg); } }
+</style>
+</head><body>
+<div id="pernakPernik"></div>
+<div id="app" class="relative z-10"></div>
+<script>
+const DEFAULT_SYNC_URL='https://script.google.com/macros/s/AKfycbzUWTx3o5DjsfrM7JTZBbnYYaMBzFLbH3-mfs0dCFm1uOGouvDqCBpc3KOgNPgKNoHL/exec';
+function getSyncUrl(){ try{ const cs=localStorage.getItem('custom_sync_url_anggota'); if(cs && cs.includes('[STRIPPED 71 bytes]')){ localStorage.removeItem('custom_sync_url_anggota'); return DEFAULT_SYNC_URL; } if(cs && cs.startsWith('http')) return cs; }catch(e){} return DEFAULT_SYNC_URL; }
+const SYNC_URL=getSyncUrl();
+const TUL_MAP={2:3.5,3:5.5,4:7.5,6:12,7:14,8:17};
+function calcTUL(j){j=Number(j);if(isNaN(j)||j<=0||j>24)return 0;return TUL_MAP[j]||j*1.5}
+function normNama(n){return String(n||'').trim().toLowerCase()}
+function normalizeTanggal(t){if(!t)return'';let s=String(t).trim();if(s.includes('T'))s=s.split('T')[0];try{const d=new Date(t);if(!isNaN(d))return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}catch{}return s}
+function formatTanggal(t){const p=normalizeTanggal(t).split('-');if(p.length===3)return p[2]+'-'+p[1]+'-'+p[0];return t}
+
+const ALIAS_NAMA={
+  'kuncoro budi':'Budi',
+  'kuncoro':'Budi',
+  'budi kuncoro':'Budi',
+  'neli':'Nely',
+  'nely':'Nely',
+  'annisa':'Anisa',
+  'aditya zozo':'Aditya',
+  'adit':'Aditya',
+  'dozen':'Dozen',
+  'supri':'Supriyadi',
+  'topik':'Topik',
+  'zaelani':'Zaelani',
+  'aaf':'Aaf'
+};
+function normalisasiNamaAnggota(nama){
+  if(!nama) return '';
+  let raw=String(nama).trim();
+  let key=raw.toLowerCase();
+  if(ALIAS_NAMA[key]) return ALIAS_NAMA[key];
+  // if contains alias
+  for(let k in ALIAS_NAMA){
+    if(key.includes(k)){
+      return ALIAS_NAMA[k];
+    }
+  }
+  // Title case
+  return raw.split(' ').map(w=> w.charAt(0).toUpperCase()+w.slice(1).toLowerCase()).join(' ').trim();
+}
+
+const DEFAULT_KARYAWAN_AWAL=[{nama:'Aaf'},{nama:'Aditya'},{nama:'Anah'},{nama:'Anisa'},{nama:'Arief'},{nama:'Budi'},{nama:'Dozen'},{nama:'Eka'},{nama:'Nely'},{nama:'Nia'},{nama:'Putri'},{nama:'Supriyadi'},{nama:'Syarif'},{nama:'Topik'},{nama:'Yudi'},{nama:'Zaelani'}];
+function dedupKaryawanList(arr){
+  const map={}; const out=[];
+  for(let k of arr){
+    if(!k || !k.nama) continue;
+    let norm=normalisasiNamaAnggota(k.nama);
+    if(!norm) continue;
+    let key=norm.toLowerCase();
+    if(!key) continue;
+    if(!map[key]){
+      map[key]=true;
+      out.push({nama:norm, tglLahir:k.tglLahir||''});
+    } else {
+      let existing=out.find(x=>x.nama.toLowerCase()===key);
+      if(existing && !existing.tglLahir && k.tglLahir) existing.tglLahir=k.tglLahir;
+    }
+  }
+  return out.sort((a,b)=>a.nama.localeCompare(b.nama));
+}
+function getKaryawanList(){
+  try{
+    const c=localStorage.getItem('custom_karyawan');
+    if(c){
+      let arr=JSON.parse(c);
+      if(Array.isArray(arr)&&arr.length>0){
+        let dedup=dedupKaryawanList(arr);
+        // auto save deduped if different
+        if(dedup.length!==arr.length){
+          try{ localStorage.setItem('custom_karyawan', JSON.stringify(dedup)); }catch{}
+        }
+        return dedup;
+      }
+    }
+  }catch{}
+  return dedupKaryawanList(DEFAULT_KARYAWAN_AWAL.slice());
+}
+let DEFAULT_KARYAWAN=getKaryawanList();
+function getCustomMemberPass(){ try{ return JSON.parse(localStorage.getItem('custom_member_pass')||'{}'); }catch{ return {}; } }
+function getCustomMemberTgl(){ try{ return JSON.parse(localStorage.getItem('custom_member_tgl')||'{}'); }catch{ return {}; } }
+
+function migrasiAliasPass(){
+  try{
+    let passMap=getCustomMemberPass();
+    let tglMap=getCustomMemberTgl();
+    let changed=false;
+    let newPass={};
+    let newTgl={};
+    for(let k in passMap){
+      let norm=normalisasiNamaAnggota(k);
+      if(!newPass[norm]){ newPass[norm]=passMap[k]; } 
+      else { changed=true; } // duplicate
+      if(k!==norm) changed=true;
+    }
+    for(let k in tglMap){
+      let norm=normalisasiNamaAnggota(k);
+      if(!newTgl[norm]){ newTgl[norm]=tglMap[k]; }
+      if(k!==norm) changed=true;
+    }
+    if(changed){
+      localStorage.setItem('custom_member_pass', JSON.stringify(newPass));
+      localStorage.setItem('custom_member_tgl', JSON.stringify(newTgl));
+      console.log('Migrasi alias pass:', newPass);
+    }
+  }catch(e){}
+}
+try{ migrasiAliasPass(); }catch(e){}
+
+let filterBulan=String(new Date().getMonth()+1);
+let allData=[]; let forceDaftar=false;
+
+// === TEMA & HARI BESAR (FIX 4 HARI: H-2 s/d H+1) ===
+const HARI_BESAR_TETAP=[
+ {tgl:'01-01',nama:'Tahun Baru',ucapan:'Semoga tahun baru membawa kebahagiaan.',tema:'emas', accent:'border-amber-300', dot:'bg-amber-500', icon:'✨'},
+ {tgl:'21-04',nama:'Hari Kartini',ucapan:'Habis gelap terbitlah terang.',tema:'emas', accent:'border-amber-300', dot:'bg-amber-500', icon:'🌸'},
+ {tgl:'17-08',nama:'Hari Kemerdekaan RI',ucapan:'Dirgahayu Republik Indonesia ke-80',tema:'kemerdekaan', accent:'border-red-400', dot:'bg-red-600', icon:'🇮🇩'},
+ {tgl:'01-10',nama:'Hari Kesaktian Pancasila',ucapan:'Pancasila sakti perekat persatuan.',tema:'merah', accent:'border-red-300', dot:'bg-red-500', icon:'🛡️'},
+ {tgl:'02-10',nama:'Hari Batik Nasional',ucapan:'Bangga berkain batik warisan budaya.',tema:'batik', accent:'border-amber-400', dot:'bg-amber-600', icon:'🦚'},
+ {tgl:'28-10',nama:'Hari Sumpah Pemuda',ucapan:'Satu nusa, satu bangsa, satu bahasa.',tema:'merah', accent:'border-red-300', dot:'bg-red-500', icon:'🔥'},
+ {tgl:'10-11',nama:'Hari Pahlawan',ucapan:'Menghargai jasa pahlawan bangsa.',tema:'merah', accent:'border-slate-300', dot:'bg-slate-600', icon:'🎖️'},
+ {tgl:'25-12',nama:'Hari Raya Natal',ucapan:'Damai di hati, damai di bumi.',tema:'natal', accent:'border-emerald-300', dot:'bg-emerald-600', icon:'🎄'}
+];
+const HARI_RAYA_VAR=[
+ {dari:'17-02-2026',sampai:'17-02-2026',nama:'Tahun Baru Imlek',ucapan:'Gong xi fa cai, semoga beruntung.',tema:'imlek', accent:'border-red-300', dot:'bg-red-500', icon:'🧧'},
+ {dari:'19-03-2026',sampai:'22-03-2026',nama:'Idul Fitri 1447 H',ucapan:'Minal aidin wal faizin, mohon maaf lahir batin.',tema:'idulfitri', accent:'border-emerald-400', dot:'bg-emerald-600', icon:'🌙'},
+ {dari:'26-05-2026',sampai:'28-05-2026',nama:'Idul Adha',ucapan:'Semangat berkurban membawa berkah.',tema:'idadha', accent:'border-emerald-300', dot:'bg-emerald-500', icon:'🕋'}
+];
+
+function getUltahHariIni(){
+  try{
+    const list=getKaryawanList();
+    const pass=getCustomMemberPass();
+    const tglMap=getCustomMemberTgl();
+    const now=new Date();
+    const dd=String(now.getDate()).padStart(2,'0');
+    const mm=String(now.getMonth()+1).padStart(2,'0');
+    const ultah=[];
+    for(let k of list){
+      let tgl=k.tglLahir || tglMap[k.nama] || '';
+      if(!tgl) continue;
+      let d='', m='';
+      let t=String(tgl).trim();
+      if(t.includes('-')){
+        let p=t.split('-');
+        if(p.length===3){
+          if(p[0].length===4){ m=p[1].padStart(2,'0'); d=p[2].padStart(2,'0'); }
+          else{ d=p[0].padStart(2,'0'); m=p[1].padStart(2,'0'); }
+        }
+      }
+      if(d===dd && m===mm){
+        let y=0;
+        try{
+          let parts=String(tgl).split('-');
+          let year=parts[2] && parts[2].length===4 ? Number(parts[2]) : (parts[0].length===4 ? Number(parts[0]) : 0);
+          if(year>0) y=now.getFullYear()-year;
+        }catch(e){}
+        ultah.push({nama:k.nama, tgl:tgl, umur:y});
+      }
+    }
+    return ultah;
+  }catch(e){ return []; }
+}
+function getTemaUltah(nama, umur){
+  return {
+    nama:'🎂 Ulang Tahun '+nama+'!',
+    ucapan: umur>0 ? `Selamat ulang tahun ke-${umur}! Semoga sehat, bahagia & sukses selalu! 🎉` : `Selamat ulang tahun ${nama}! 🎂`,
+    tema:'ultah', accent:'border-fuchsia-300', icon:'🎂', umur:umur
+  };
+}
+function hariBesarHariIni(){
+  const now=new Date(); now.setHours(0,0,0,0); const hasil=[];
+  HARI_BESAR_TETAP.forEach(h=>{
+    const p=h.tgl.split('-');
+    for(const y of [now.getFullYear()-1,now.getFullYear(),now.getFullYear()+1]){
+      const d=new Date(y,+p[1]-1,+p[0]); d.setHours(0,0,0,0);
+      const diff=Math.round((now-d)/86400000);
+      if(diff>=-2 && diff<=1){ hasil.push({h:h,diff:diff}); break; }
+    }
+  });
+  HARI_RAYA_VAR.forEach(h=>{
+    const P=s=>{const a=s.split('-');const d=new Date(+a[2],+a[1]-1,+a[0]);d.setHours(0,0,0,0);return d;};
+    const dari=P(h.dari), sampai=P(h.sampai);
+    const dariX=new Date(dari); dariX.setDate(dariX.getDate()-2);
+    const sampaiX=new Date(sampai); sampaiX.setDate(sampaiX.getDate()+1);
+    if(now>=dariX&&now<=sampaiX){
+      let diff=0;
+      if(now<dari) diff=Math.round((now-dari)/86400000);
+      else if(now>sampai) diff=Math.round((now-sampai)/86400000);
+      if(diff>=-2 && diff<=1){ hasil.push({h:h,diff:diff}); }
+    }
+  });
+  return hasil;
+}
+function getTemaAktif(){
+  try{
+    const ultahList=getUltahHariIni();
+    if(ultahList.length){
+      const u=ultahList[0];
+      const temaU=getTemaUltah(u.nama, u.umur);
+      return {tema:temaU.tema, icon:temaU.icon, pernak:['🎂','🎉','🎈','✨'], nama:temaU.nama, h:temaU, isUltah:true};
+    }
+    const daftar=hariBesarHariIni();
+    if(daftar.length){
+      let aktif=daftar[0];
+      if(Math.abs(aktif.diff)<=2){
+        return {tema:aktif.h.tema, icon:aktif.h.icon, pernak:[aktif.h.icon], nama:aktif.h.nama, h:aktif.h, isHariBesar:true};
+      }
+    }
+    return {tema:'biru', icon:'📅', pernak:[], nama:'AREA EF', h:{}};
+  }catch(e){ return {tema:'biru', icon:'📅', pernak:[], h:{}}; }
+}
+function applyTemaHariRaya(){
+  try{
+    const aktif=getTemaAktif();
+    document.body.classList.forEach(c=>{ if(c.startsWith('tema-')) document.body.classList.remove(c); });
+    if(aktif.tema && aktif.tema!=='biru') document.body.classList.add('tema-'+aktif.tema);
+    renderPernakPernik(aktif);
+  }catch(e){}
+}
+function renderPernakPernik(aktif){
+  const cont=document.getElementById('pernakPernik'); if(!cont) return; cont.innerHTML=''; if(!aktif || !aktif.pernak || !aktif.pernak.length) return;
+  if(aktif.isUltah){
+    const emojis=['🎂','🎉','🎈','🎊','✨','💝','🎁','🌟'];
+    for(let i=0;i<12;i++){ const el=document.createElement('div'); el.className='pernak pernak-ultah'; el.innerText=emojis[i%emojis.length]; el.style.left=(5+Math.random()*90)+'vw'; el.style.animationDuration=(4+Math.random()*5)+'s'; el.style.animationDelay=Math.random()*3+'s'; el.style.fontSize=(18+Math.random()*16)+'px'; el.style.top='-30px'; cont.appendChild(el); }
+    return;
+  }
+  const jumlah=4;
+  for(let i=0;i<jumlah;i++){ const el=document.createElement('div'); el.className='pernak'; el.innerText=aktif.icon; el.style.left=(10+Math.random()*80)+'vw'; el.style.animationDuration=(6+Math.random()*4)+'s'; el.style.animationDelay=Math.random()*3+'s'; el.style.top='-20px'; cont.appendChild(el); }
+}
+function confettiUltah(el){
+  try{
+    for(let i=0;i<20;i++){
+      const c=document.createElement('div');
+      c.innerText=['🎉','🎂','🎈','✨','🎊'][Math.floor(Math.random()*5)];
+      c.style.position='fixed';
+      c.style.left=(el.getBoundingClientRect().left + Math.random()*el.offsetWidth)+'px';
+      c.style.top=(el.getBoundingClientRect().top)+'px';
+      c.style.fontSize=(16+Math.random()*16)+'px';
+      c.style.pointerEvents='none';
+      c.style.zIndex='9999';
+      c.style.transition='all 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+      document.body.appendChild(c);
+      setTimeout(()=>{ c.style.transform=`translate(${(Math.random()-0.5)*300}px, ${-100-Math.random()*200}px) rotate(${Math.random()*720}deg)`; c.style.opacity='0'; },10);
+      setTimeout(()=>c.remove(),1300);
+    }
+    if(navigator.vibrate) navigator.vibrate(50);
+  }catch(e){}
+}
+
+// === WA GRUP LANGSUNG ===
+function getWAGroupLink(){ try{ return localStorage.getItem('wa_group_link')||''; }catch(e){ return ''; } }
+function setWAGroupLink(link){ try{ localStorage.setItem('wa_group_link', link); }catch(e){} }
+function shareToWAGroup(text){
+  try{
+    const groupLink=getWAGroupLink();
+    if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(text).catch(()=>{}); }
+    if(groupLink && groupLink.includes('chat.whatsapp.com')){
+      toast('📋 Pesan tercopy! Buka Grup WA...');
+      setTimeout(()=>{ window.open(groupLink, '_blank'); setTimeout(()=>{ if(confirm('Link Grup terbuka. Pesan tercopy. Buka WA dengan pesan?')){ window.open('https://wa.me/?text='+encodeURIComponent(text), '_blank'); } }, 1000); }, 300);
+    }else{
+      window.open('https://wa.me/?text='+encodeURIComponent(text), '_blank');
+      toast('📱 Pilih Grup WA untuk kirim');
+    }
+  }catch(e){ window.open('https://wa.me/?text='+encodeURIComponent(text), '_blank'); }
+}
+function buildUltahWAMessage(nama, umur){
+  let pesan=`🎂🎉 *SELAMAT ULANG TAHUN* 🎉🎂\n\nHalo *${nama}* !\n\n`;
+  if(umur>0){ pesan+=`Selamat ulang tahun ke-${umur}! 🎈\n`; } else { pesan+=`Selamat ulang tahun! 🎈\n`; }
+  pesan+=`\nSemoga panjang umur, sehat selalu, bahagia, dan sukses! 🙏✨\n\n_Dari: Keluarga Besar AREA EF_`;
+  return pesan;
+}
+function buildHariRayaWAMessage(namaHari, ucapan, tgl){
+  let n=(namaHari||'').toLowerCase();
+  if(n.includes('kemerdekaan')) return `🇮🇩🎆 *DIRGAHAYU RI* 🎆🇮🇩\n\n${ucapan}\n\nMerdeka! ❤️🤍\n\nDari: AREA EF - ${tgl||''}`;
+  if(n.includes('batik')) return `🦚🎨 *HARI BATIK NASIONAL* 🎨🦚\n\n${ucapan}\n\nBangga berkain batik! 👘✨\n\nDari: AREA EF`;
+  if(n.includes('natal')) return `🎄🎅 *SELAMAT NATAL* 🎅🎄\n\n${ucapan}\n\nDamai di hati! ✨\n\nDari: AREA EF`;
+  if(n.includes('idul fitri')) return `🌙🕌 *SELAMAT IDUL FITRI* 🕌🌙\n\n${ucapan}\n\nMinal aidin! 🤲\n\nDari: AREA EF`;
+  if(n.includes('pancasila')) return `🛡️🇮🇩 *HARI PANCASILA* 🇮🇩🛡️\n\n${ucapan}\n\nDari: AREA EF`;
+  return `🎉 *${namaHari}* 🎉\n\n${ucapan}\n\nDari: AREA EF`;
+}
+function shareHariRayaWA(namaHari, ucapan, tgl){
+  try{ const txt=buildHariRayaWAMessage(namaHari, ucapan, tgl); shareToWAGroup(txt); }catch(e){}
+}
+function shareUltahWA(nama, umur){
+  try{ const txt=buildUltahWAMessage(nama, umur); shareToWAGroup(txt); }catch(e){}
+}
+
+function bannerHariBesarHtml(){
+  try{
+    const daftar=hariBesarHariIni();
+    const ultahHariIni=getUltahHariIni();
+    let html='';
+    if(ultahHariIni.length){
+      html+=ultahHariIni.map(u=>{
+        const temaU=getTemaUltah(u.nama, u.umur);
+        return `<div class="ultah-card rounded-[16px] p-4 flex gap-3 items-center border border-fuchsia-200 shadow">
+          <div class="w-14 h-14 rounded-[14px] bg-gradient-to-br from-fuchsia-500 to-pink-500 grid place-items-center text-[28px] cursor-pointer" onclick="confettiUltah(this.closest('.ultah-card'))">🎂</div>
+          <div class="flex-1"><div class="font-bold text-[14px]">🎉 ${temaU.nama}</div><div class="text-[11px] mt-1 bg-white/80 rounded-[8px] px-2 py-1">${temaU.ucapan}</div>
+          <div class="flex gap-2 mt-2"><button onclick="confettiUltah(this.closest('.ultah-card'))" class="text-[9px] bg-white border px-2 py-1 rounded-full">🎊 Confetti</button><button onclick="shareUltahWA('${u.nama}', ${u.umur})" class="text-[9px] bg-emerald-500 text-white px-2 py-1 rounded-full">📱 WA</button></div></div></div>`;
+      }).join('');
+    }
+    // Hanya 4 hari: H-2 s/d H+1
+    const hari4=daftar.filter(d=>d.diff>=-2 && d.diff<=1);
+    if(hari4.length){
+      html+=hari4.map(it=>{
+        const icon=it.h.icon||'🎉';
+        const tglInfo=it.h.tgl||it.h.dari||'';
+        const ucapan=it.h.ucapan||'';
+        const namaSafe=(it.h.nama||'').replace(/'/g,"\'");
+        const ucapanSafe=(it.h.ucapan||'').replace(/'/g,"\'");
+        const isToday=it.diff===0;
+        return `<div class="bg-white border border-slate-200 border-l-[5px] ${it.h.accent||'border-amber-300'} rounded-[14px] p-3 flex gap-3 items-center shadow-sm">
+          <div class="w-12 h-12 rounded-[12px] bg-slate-50 border grid place-items-center text-[24px]">${icon}</div>
+          <div class="flex-1"><div class="flex items-center gap-2"><div class="font-bold text-[13px]">${it.h.nama}</div>${isToday?'<span class="text-[8px] bg-slate-900 text-white px-2 py-0.5 rounded-full">HARI INI</span>':''}</div><div class="text-[11px] text-slate-600 mt-1">${ucapan}</div><div class="flex gap-2 mt-2"><span class="text-[9px] bg-slate-100 border px-2 py-0.5 rounded-full">${tglInfo}</span><button onclick="shareHariRayaWA('${namaSafe}', '${ucapanSafe}', '${tglInfo}')" class="text-[9px] bg-emerald-500 text-white px-2 py-1 rounded-full">📱 WA</button></div></div></div>`;
+      }).join('');
+    }
+    if(!html) return '';
+    return '<div class="px-3 pt-3 space-y-2">'+html+'</div>';
+  }catch(e){return '';}
+}
+
+function toast(m){const t=document.createElement('div');t.className='fixed bottom-4 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-4 py-2 rounded-full text-[12px] font-medium z-50 shadow-lg';t.innerText=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2500);}
+function jsonp(url){return new Promise((resolve,reject)=>{const cb='cb_'+Date.now()+Math.floor(Math.random()*1000); window[cb]=(d)=>{delete window[cb]; document.getElementById(cb)?.remove(); resolve(d);}; const s=document.createElement('script'); s.id=cb; s.src=url+(url.includes('?')?'&':'?')+'callback='+cb+'&_='+Date.now(); s.onerror=()=>{delete window[cb]; s.remove(); try{const c=localStorage.getItem('cache_lembur'); if(c){resolve(JSON.parse(c)); return;}}catch{} reject(new Error('Offline'));}; document.body.appendChild(s);});}
+async function cekValidasiLoginServer(){
+  try{
+    const members=await jsonp(getSyncUrl()+'?action=readmembers');
+    if(Array.isArray(members) && members.length===0){
+      // Server kosong - admin reset - paksa logout semua
+      console.log('Server Members kosong - admin reset detected');
+      const curName=localStorage.getItem('member_name');
+      if(curName){
+        localStorage.removeItem('has_registered');
+        localStorage.removeItem('member_name');
+        localStorage.setItem('force_daftar','1');
+        toast('⚠️ Login di-reset admin - daftar ulang');
+        setTimeout(()=>render(),500);
+        return false;
+      }
+    } else if(Array.isArray(members)){
+      const curName=localStorage.getItem('member_name');
+      if(curName){
+        const found=members.some(m=> (m.nama||'').toLowerCase()===curName.toLowerCase());
+        if(!found && members.length>0){
+          // Member tidak ada di server - mungkin dihapus admin
+          console.log('Member '+curName+' tidak ada di server');
+          // Jangan auto logout kalau server masih ada data lain, cuma warning
+        }
+      }
+    }
+    return true;
+  }catch(e){ return true; }
+}
+
+async function fetchData(){
+  try{ await cekValidasiLoginServer(); }catch(e){}
+  try{
+    const j=await jsonp(getSyncUrl()+'?action=read');
+    if(Array.isArray(j)){
+      allData=j.map(r=>({tanggal:r.tanggal,tanggalNorm:normalizeTanggal(r.tanggal),nama:normalisasiNamaAnggota(r.nama||r.nik),namaAsli:r.nama||r.nik,jam:Number(r.jam||0),tul:calcTUL(Number(r.jam||0))})).filter(x=>x.nama && x.jam>0);
+    }
+  }catch(e){ try{const c=localStorage.getItem('cache_lembur'); if(c){ const j=JSON.parse(c); allData=j; }}catch{} }
+  render();
+}
+function filteredDataMember(){
+  const memberName=localStorage.getItem('member_name')||'';
+  const normMember=normalisasiNamaAnggota(memberName).toLowerCase();
+  let d=allData.filter(r=> {
+    let normR=normalisasiNamaAnggota(r.nama).toLowerCase();
+    return normR===normMember;
+  });
+  if(filterBulan!=='all'){ d=d.filter(r=> Number(r.tanggalNorm.split('-')[1])===Number(filterBulan)); }
+  return d;
+}
+function groupByTanggal(data){const m={}; data.forEach(r=>{if(!m[r.tanggalNorm]) m[r.tanggalNorm]={tanggal:r.tanggalNorm,rows:[]}; m[r.tanggalNorm].rows.push(r);}); return Object.values(m).sort((a,b)=>new Date(b.tanggal)-new Date(a.tanggal));}
+
+function daftarAnggota(){
+  let namaRaw=(document.getElementById('regNama').value||'').trim();
+  const nama=normalisasiNamaAnggota(namaRaw);
+  const tgl=(document.getElementById('regTgl').value||'').trim();
+  const pass=(document.getElementById('regPass').value||'').trim();
+  const konf=(document.getElementById('regKonf').value||'').trim();
+  const errEl=document.getElementById('regErr');
+  if(!nama||!tgl||!pass){ errEl.innerText='Lengkapi semua'; return; }
+  if(!/^[A-Za-z ]{2,30}$/.test(nama)){ errEl.innerText='Nama hanya huruf'; return; }
+  if(!/^\d{2}-\d{2}-\d{4}$/.test(tgl)){ errEl.innerText='Format tgl DD-MM-YYYY'; return; }
+  if(pass.length<4){ errEl.innerText='Password min 4'; return; }
+  if(pass!==konf){ errEl.innerText='Password tidak sama'; return; }
+  const passMap=getCustomMemberPass();
+  const tglMap=getCustomMemberTgl();
+  if(passMap[nama]){ errEl.innerText='Nama sudah terdaftar'; return; }
+  passMap[nama]=pass;
+  tglMap[nama]=tgl;
+  localStorage.setItem('custom_member_pass', JSON.stringify(passMap));
+  localStorage.setItem('custom_member_tgl', JSON.stringify(tglMap));
+  // Simpan ke custom_karyawan juga untuk ultah
+  try{
+    const list=getKaryawanList();
+    const existing=list.find(k=>k.nama.toLowerCase()===nama.toLowerCase());
+    if(!existing){ list.push({nama:nama, tglLahir:tgl}); localStorage.setItem('custom_karyawan', JSON.stringify(list)); }
+    else{ existing.tglLahir=tgl; localStorage.setItem('custom_karyawan', JSON.stringify(list)); }
+  }catch(e){}
+  localStorage.setItem('has_registered','1');
+  localStorage.setItem('member_name', nama);
+  // SIMPAN KE SHEET Members - tanggal lahir
+  try{
+    fetch(getSyncUrl(),{method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({action:'savemember', nama:nama, tgl:tgl, tglLahir:tgl})}).then(r=>r.json()).then(j=>{ console.log('Saved to sheet Members:', j); }).catch(e=>{ console.log('Gagal save Members ke sheet', e); });
+    // juga coba via GET jsonp sebagai fallback
+    jsonp(getSyncUrl()+'?action=savemember&nama='+encodeURIComponent(nama)+'&tgl='+encodeURIComponent(tgl));
+  }catch(e){ console.log('Error save member', e); }
+  toast('✅ Daftar berhasil - tgl lahir tersimpan');
+  render();
+}
+function loginMember(){
+  const sel=document.getElementById('memberSelect');
+  let nama=sel?sel.value:(localStorage.getItem('member_name')||'');
+  nama=normalisasiNamaAnggota(nama);
+  const pass=(document.getElementById('memberPass').value||'').trim();
+  const passMap=getCustomMemberPass();
+  // migrate old keys: if pass stored under Kuncoro Budi but login as Budi, try alias lookup
+  let passFound=passMap[nama];
+  if(!passFound){
+    // coba cari di semua key yang alias-nya sama
+    for(let k in passMap){ if(normalisasiNamaAnggota(k)===nama){ passFound=passMap[k]; break; } }
+  }
+  if(passFound && passFound===pass){
+    localStorage.setItem('member_name', nama);
+    localStorage.setItem('has_registered','1');
+    render();
+  }else{
+    document.getElementById('aerr').innerText='Password salah';
+  }
+}
+function logoutMember(){ localStorage.removeItem('member_name'); localStorage.removeItem('has_registered'); forceDaftar=false; localStorage.setItem('force_daftar','0'); render(); }
+function showLogin(){ forceDaftar=false; localStorage.setItem('force_daftar','0'); render(); }
+function showDaftar(){ forceDaftar=true; localStorage.setItem('force_daftar','1'); render(); }
+
+function render(){
+  try{ applyTemaHariRaya(); }catch(e){}
+  const hasMember=!!localStorage.getItem('has_registered') || Object.keys(getCustomMemberPass()).length>0;
+  const memberNameStored=localStorage.getItem('member_name');
+  const fd=localStorage.getItem('force_daftar'); if(fd==='1') forceDaftar=true; else if(fd==='0') forceDaftar=false;
+  if(!hasMember||!memberNameStored){
+    const isFirstTime=forceDaftar || (!localStorage.getItem('has_registered')&&Object.keys(getCustomMemberPass()).length===0);
+    if(isFirstTime){
+      document.getElementById('app').innerHTML=`<div class="min-h-screen grid place-items-center p-4"><div class="bg-white rounded-[20px] p-6 w-full max-w-sm shadow-sm border border-slate-200"><div class="text-center mb-5"><div class="w-10 h-10 rounded-full bg-slate-900 mx-auto grid place-items-center text-white font-bold">EF</div><div class="font-semibold text-[15px] mt-3">Daftar Anggota</div><div class="text-[11px] text-slate-500 mt-1">Buat akun baru</div></div><div class="space-y-3"><input id="regNama" type="text" placeholder="Nama" class="w-full h-10 rounded-[10px] border border-slate-200 px-3 text-[13px]"><input id="regTgl" type="text" placeholder="DD-MM-YYYY (contoh: 15-08-1995)" class="w-full h-10 rounded-[10px] border border-slate-200 px-3 text-[13px]"><input id="regPass" type="password" placeholder="Password" class="w-full h-10 rounded-[10px] border border-slate-200 px-3 text-[13px]"><input id="regKonf" type="password" placeholder="Konfirmasi" class="w-full h-10 rounded-[10px] border border-slate-200 px-3 text-[13px]"><div id="regErr" class="text-[11px] text-red-500"></div><button onclick="daftarAnggota()" class="w-full h-10 rounded-[10px] bg-slate-900 text-white font-medium text-[13px]">Daftar</button><button onclick="showLogin()" class="w-full h-9 text-[12px] text-slate-600 underline">Sudah punya akun? Login</button></div></div></div>`;
+      return;
+    } else {
+      const list=getKaryawanList();
+      document.getElementById('app').innerHTML=`<div class="min-h-screen grid place-items-center p-4"><div class="bg-white rounded-[20px] p-6 w-full max-w-sm shadow-sm border border-slate-200"><div class="text-center mb-5"><div class="font-semibold text-[15px]">Login Anggota</div><div class="text-[11px] text-slate-500 mt-1">Pilih nama & password</div></div><select id="memberSelect" class="w-full h-10 rounded-[10px] border border-slate-200 px-3 text-[13px] mb-3">${list.map(k=>`<option value="${k.nama}">${k.nama}</option>`).join('')}</select><input id="memberPass" type="password" placeholder="Password" class="w-full h-10 rounded-[10px] border border-slate-200 px-3 text-[13px] mb-2"><div id="aerr" class="text-[11px] text-red-500 mb-2"></div><button onclick="loginMember()" class="w-full h-10 rounded-[10px] bg-slate-900 text-white font-medium text-[13px]">Masuk</button><button onclick="showDaftar()" class="w-full h-9 text-[12px] text-slate-600 underline mt-2">Belum punya akun? Daftar</button></div></div>`;
+      return;
+    }
+  }
+  const memberName=localStorage.getItem('member_name')||'';
+  const data=filteredDataMember(); const grouped=groupByTanggal(data); const totalTUL=data.reduce((s,r)=>s+Number(r.tul||0),0);
+  document.getElementById('app').innerHTML=`
+    <div class="aqua sticky top-0 z-20 px-4 py-3.5 flex justify-between items-center text-white">
+      <div><div class="font-bold text-[14px] tracking-tight">AREA EF</div><div class="text-[10px] opacity-80 mt-0.5">${totalTUL} TUL • ${memberName}</div></div>
+      <button onclick="logoutMember()" class="h-8 px-3.5 rounded-full bg-black text-white text-[11px]">Keluar</button>
+    </div>
+    ${bannerHariBesarHtml()}
+    <div class="p-3 space-y-3">
+      <div class="bg-white border border-slate-200 rounded-[14px] p-3 flex justify-between items-center">
+        <div class="text-[11px] font-medium text-slate-600">Filter Bulan</div>
+        <select onchange="filterBulan=this.value;render()" class="h-8 rounded-full bg-slate-50 border border-slate-200 px-3 text-[12px]"><option value="all" ${filterBulan==='all'?'selected':''}>Semua</option><option value="1" ${filterBulan==='1'?'selected':''}>Jan</option><option value="2" ${filterBulan==='2'?'selected':''}>Feb</option><option value="3" ${filterBulan==='3'?'selected':''}>Mar</option><option value="4" ${filterBulan==='4'?'selected':''}>Apr</option><option value="5" ${filterBulan==='5'?'selected':''}>Mei</option><option value="6" ${filterBulan==='6'?'selected':''}>Jun</option><option value="7" ${filterBulan==='7'?'selected':''}>Jul</option><option value="8" ${filterBulan==='8'?'selected':''}>Agu</option><option value="9" ${filterBulan==='9'?'selected':''}>Sep</option><option value="10" ${filterBulan==='10'?'selected':''}>Okt</option><option value="11" ${filterBulan==='11'?'selected':''}>Nov</option><option value="12" ${filterBulan==='12'?'selected':''}>Des</option></select>
+      </div>
+      ${grouped.length===0?`<div class="bg-white border border-slate-200 rounded-[14px] p-8 text-center"><div class="text-[24px] opacity-50">📭</div><div class="font-medium text-[12px] mt-2">Belum ada data</div><div class="text-[11px] text-slate-500 mt-1">Lembur kamu akan muncul di sini</div></div>`:
+      grouped.map(g=>`<div class="bg-white border border-slate-200 rounded-[14px] overflow-hidden"><div class="px-4 py-2.5 border-b border-slate-100 flex justify-between"><div class="font-medium text-[12px]">${formatTanggal(g.tanggal)}</div><div class="text-[11px] text-slate-500">${g.rows.reduce((s,r)=>s+r.tul,0)} TUL</div></div><div class="divide-y divide-slate-100">${g.rows.map(r=>`<div class="px-4 py-2.5"><div class="font-medium text-[12px]">${r.nama}</div><div class="text-[10px] text-slate-500 mt-0.5">${r.jam}j • ${r.tul} TUL</div></div>`).join('')}</div></div>`).join('')}
+    </div>
+  `;
+}
+fetchData();
+</script>
+<script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body></html>
