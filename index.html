@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="id"><head><style>
+@font-face {
+  font-family: "Optimistic";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("/fonts/OptimisticAI_VF_Optimized.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Optimistic Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/OptimisticMono_W_TextRegular.woff2") format("woff2");
+}
+:where(html) {
+  font-family: "Optimistic", system-ui, sans-serif;
+}
+:where(code, pre, kbd, samp) {
+  font-family: "Optimistic Mono", ui-monospace, monospace;
+}
+</style><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>AREA EF - Admin Ultra Minimal</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+body{font-family:Inter,sans-serif;background:#fff;color:#000;min-height:100vh;-webkit-font-smoothing:antialiased;}
+.mono{font-family:JetBrains Mono,monospace;}
+input,select,textarea{font-family:Inter,sans-serif;}
+</style>
+</head><body>
+<div id="app"></div>
+<script>
+const DEFAULT_SYNC_URL='https://script.google.com/macros/s/AKfycbz-Tgif9wJD6PAidITjE3-55BInA4pHZAibDI3mAIYUp_6DQV8may5oJkwyY0nHx4qE/exec';
+const FALLBACK_SYNC_URL='https://script.google.com/macros/s/AKfycbzUWTx3o5DjsfrM7JTZBbnYYaMBzFLbH3-mfs0dCFm1uOGouvDqCBpc3KOgNPgKNoHL/exec';
+function getSyncUrl(){ try{ const cs=localStorage.getItem('custom_sync_url'); if(cs && cs.includes('script.google.com')){ if(cs.startsWith('http')) return cs; } }catch(e){} return DEFAULT_SYNC_URL; }
+const ADMIN_PASS_DEFAULT='admin123';
+function getAdminPass(){ try{ const c=localStorage.getItem('custom_admin_pass'); if(c) return c; }catch(e){} return ADMIN_PASS_DEFAULT; }
+const TUL_MAP={2:3.5,3:5.5,4:7.5,6:12,7:14,8:17};
+function calcTUL(j){ j=Number(j); if(isNaN(j)||j<=0||j>24) return 0; return TUL_MAP[j]||j*1.5; }
+function parseTglSort(t){ if(!t) return 0; let p=String(t).split(/[-/]/); if(p.length!==3) return 0; let d=Number(p[0]),m=Number(p[1]),y=Number(p[2]); return new Date(y,m-1,d).getTime(); }
+function isJamValid(j){ j=Number(j); return !isNaN(j) && j>0 && j<=24; }
+function normNama(n){return String(n||'').trim().toLowerCase();}
+function normalizeTanggal(t){if(!t)return'';let s=String(t).trim();if(s.includes('T'))s=s.split('T')[0];try{const d=new Date(t);if(!isNaN(d))return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}catch{}return s;}
+function formatTanggal(t){const p=normalizeTanggal(t).split('-');if(p.length===3)return p[2]+'-'+p[1]+'-'+p[0];return t;}
+const ALIAS_NAMA={'kuncoro budi':'Budi','kuncoro':'Budi','budi kuncoro':'Budi','neli':'Nely','nely':'Nely','annisa':'Anisa','aditya zozo':'Aditya','adit':'Aditya','dozen':'Dozen','supri':'Supriyadi','topik':'Topik','zaelani':'Zaelani','aaf':'Aaf'};
+function normalisasiNamaAnggota(nama){if(!nama) return '';let raw=String(nama).trim();let key=raw.toLowerCase();if(ALIAS_NAMA[key]) return ALIAS_NAMA[key];for(let k in ALIAS_NAMA){if(key.includes(k))return ALIAS_NAMA[k];}return raw.split(' ').map(w=> w.charAt(0).toUpperCase()+w.slice(1).toLowerCase()).join(' ').trim();}
+const DEFAULT_KARYAWAN_AWAL=[{nama:'Aaf'},{nama:'Aditya'},{nama:'Anah'},{nama:'Anisa'},{nama:'Arief'},{nama:'Budi'},{nama:'Dozen'},{nama:'Eka'},{nama:'Nely'},{nama:'Nia'},{nama:'Putri'},{nama:'Supriyadi'},{nama:'Syarif'},{nama:'Topik'},{nama:'Yudi'},{nama:'Zaelani'}];
+function dedupKaryawanList(arr){const map={};const out=[];for(let k of arr){if(!k||!k.nama)continue;let norm=normalisasiNamaAnggota(k.nama);if(!norm)continue;let key=norm.toLowerCase();if(!map[key]){map[key]=true;out.push({nama:norm});}}return out.sort((a,b)=>a.nama.localeCompare(b.nama));}
+function getKaryawanList(){try{const c=localStorage.getItem('custom_karyawan');if(c){let arr=JSON.parse(c);if(Array.isArray(arr)&&arr.length>0){return dedupKaryawanList(arr);}}}catch{}return dedupKaryawanList(DEFAULT_KARYAWAN_AWAL.slice());}
+let DEFAULT_KARYAWAN=getKaryawanList();
+function getCustomMemberPass(){try{return JSON.parse(localStorage.getItem('custom_member_pass')||'{}')}catch{return{}}}
+
+let allData=[];let isLogin=!!localStorage.getItem('admin_login');let activeTab='history';let filterBulan=String(new Date().getMonth()+1);let lastFetchInfo='Belum fetch';let pendingMembers=[];
+function toast(m){const t=document.createElement('div');t.className='fixed bottom-6 left-1/2 -translate-x-1/2 bg-black text-white px-5 py-2.5 rounded-full text-[11px] z-50';t.innerText=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2500);}
+function jsonp(url){return new Promise((resolve,reject)=>{const cb='cb_'+Date.now()+Math.floor(Math.random()*1000); window[cb]=(d)=>{delete window[cb]; document.getElementById(cb)?.remove(); resolve(d);}; const s=document.createElement('script'); s.id=cb; s.src=url+(url.includes('?')?'&':'?')+'callback='+cb+'&_='+Date.now()+Math.random(); s.onerror=()=>{delete window[cb]; s.remove(); reject(new Error('Offline'));}; document.body.appendChild(s);});}
+
+async function fetchData(force=false){
+  if(force){ try{ localStorage.removeItem('cache_lembur'); }catch{} allData=[]; }
+  if(!force){ try{const cc=localStorage.getItem('cache_lembur'); if(cc && allData.length===0){const j=JSON.parse(cc); allData=j.map(r=>({tanggal:r.tanggal,tanggalNorm:normalizeTanggal(r.tanggal),nama:r.nama||r.nik,jam:Number(r.jam||0),tul:calcTUL(Number(r.jam||0))})); lastFetchInfo='Cache: '+allData.length; render();}}catch{} }
+  try{ const ping=await jsonp(getSyncUrl()+'?action=ping&_='+Date.now()); lastFetchInfo='Sheet: '+(ping.sheet_id||'').slice(0,6)+'.. Count:'+ping.data_count+' | '; }catch(e){ lastFetchInfo='Ping err | '; }
+  let fetched=false;
+  try{
+    let j=await jsonp(getSyncUrl()+'?action=read&_nocache='+Date.now()+Math.random());
+    if((!j || (Array.isArray(j) && j.length===0)) && typeof FALLBACK_SYNC_URL!=='undefined'){
+      try{ lastFetchInfo+='Baru 0, fallback... | '; const j2=await jsonp(FALLBACK_SYNC_URL+'?action=read&_nocache='+Date.now()+Math.random()); if(Array.isArray(j2) && j2.length>0){ j=j2; lastFetchInfo+='Fallback OK: '+j2.length+' | '; try{ const items=j2.map(r=>({tanggal:r.tanggal, nama:r.nama, jam:r.jam})); fetch(getSyncUrl(),{method:'POST', body: JSON.stringify({action:'addBulk', items: items})}); }catch(e){} } }catch(e2){}
+    }
+    if(Array.isArray(j) && j.length>0){
+      let raw=j.map(r=>{let jam=Number(r.jam||0); if(!isJamValid(jam)) jam=0; let norm=normalisasiNamaAnggota(r.nama||r.nik); return {tanggal:r.tanggal,tanggalNorm:normalizeTanggal(r.tanggal),nama:norm,namaAsli:r.nama||r.nik,jam:jam,tul:calcTUL(jam)};}).filter(x=>x.nama && x.jam>0);
+      const mapDedup={}; const deduped=[]; raw.forEach(r=>{ const k=r.tanggalNorm+'|'+normNama(r.nama)+'|'+r.jam; if(!mapDedup[k]){ mapDedup[k]=true; deduped.push(r); } }); raw=deduped;
+      allData=raw; lastFetchInfo+='Server: '+j.length+' -> '+allData.length; try{ localStorage.setItem('cache_lembur', JSON.stringify(allData)); }catch{} fetched=true;
+    } else if(Array.isArray(j) && j.length===0){ lastFetchInfo+='Server 0 | '; }
+  }catch(e){ lastFetchInfo+='Err:'+e.message; try{const cc=localStorage.getItem('cache_lembur'); if(cc){ const j=JSON.parse(cc); allData=j.map(r=>({tanggal:r.tanggal,tanggalNorm:normalizeTanggal(r.tanggal),nama:r.nama||r.nik,jam:Number(r.jam||0),tul:calcTUL(Number(r.jam||0))})); lastFetchInfo+=' cache '+allData.length; fetched=true; }}catch{} }
+  allData.sort((a,b)=> parseTglSort(a.tanggalNorm||a.tanggal) - parseTglSort(b.tanggalNorm||b.tanggal)); render(); fetchMembers();
+}
+async function fetchMembers(){
+  try{ const res=await jsonp(getSyncUrl()+'?action=listMembers&_='+Date.now()); if(res && res.members){ pendingMembers=res.members.filter(m=> (m.status||'').toLowerCase()==='pending'); render(); } }catch(e){}
+}
+function login(){const p=document.getElementById('apass').value; const curPass=getAdminPass(); if(p===curPass){localStorage.setItem('admin_login','1'); isLogin=true; fetchData();} else document.getElementById('aerr').innerText='Password salah';}
+function logout(){localStorage.removeItem('admin_login'); isLogin=false; render();}
+function filteredData(){ if(filterBulan==='all') return allData; return allData.filter(r=> Number(r.tanggalNorm.split('-')[1])===Number(filterBulan)); }
+function groupByKaryawan(data){const m={}; data.forEach(r=>{const k=normNama(r.nama); if(!m[k]) m[k]={nama:r.nama,totalTUL:0,count:0}; m[k].totalTUL+=r.tul; m[k].count+=1;}); return Object.values(m).sort((a,b)=>b.totalTUL-a.totalTUL);}
+function groupByTanggal(data){const m={}; data.forEach(r=>{if(!m[r.tanggalNorm]) m[r.tanggalNorm]={tanggal:r.tanggalNorm,rows:[]}; m[r.tanggalNorm].rows.push(r);}); return Object.values(m).sort((a,b)=> new Date(b.tanggal)-new Date(a.tanggal));}
+
+function hapusTanggal(tgl){
+  if(!confirm('Hapus semua data tgl '+tgl+'?')) return;
+  const tglDDMM = tgl.split('-').reverse().join('-');
+  allData=allData.filter(r=>r.tanggalNorm!==tgl);
+  try{localStorage.setItem('cache_lembur', JSON.stringify(allData));}catch{}
+  render();
+  toast('⏳ Menghapus...');
+  try{ jsonp(getSyncUrl()+'?action=deleteTanggal&tanggal='+encodeURIComponent(tglDDMM)+'&tanggalISO='+encodeURIComponent(tgl)+'&_='+Date.now()); }catch(e){}
+  setTimeout(()=>fetchData(true),1500);
+}
+function hapusTransaksi(tgl,nama,jam){
+  if(!confirm('Hapus '+nama+' '+tgl+' ('+jam+'j)?')) return;
+  const tglDDMM = tgl.split('-').reverse().join('-');
+  allData=allData.filter(r=>!(r.tanggalNorm===tgl && normNama(r.nama)===normNama(nama) && Number(r.jam)===Number(jam)));
+  try{localStorage.setItem('cache_lembur', JSON.stringify(allData));}catch{}
+  render();
+  toast('⏳ Menghapus...');
+  try{ jsonp(getSyncUrl()+'?action=delete&tanggal='+encodeURIComponent(tglDDMM)+'&tanggalISO='+encodeURIComponent(tgl)+'&nama='+encodeURIComponent(nama)+'&jam='+encodeURIComponent(jam)+'&_='+Date.now()); }catch(e){}
+  setTimeout(()=>fetchData(true),1500);
+}
+function parsePlan(){
+  const txt=document.getElementById('txtPesan').value||'';
+  const lines=txt.split('\n');
+  let curTanggal=''; let items=[];
+  lines.forEach(line=>{
+    line=line.trim(); if(!line) return;
+    // cari tanggal
+    let m=line.match(/(\d{1,2})[-\/](\d{1,2})[-\/](\d{2,4})/);
+    if(m){ let d=m[1].padStart(2,'0'), mo=m[2].padStart(2,'0'), y=m[3]; if(y.length===2) y='20'+y; curTanggal=d+'-'+mo+'-'+y; return; }
+    // cari jam dan nama
+    let jamMatch=line.match(/(\d{1,2})\s*j/i);
+    if(jamMatch && curTanggal){
+      let jam=Number(jamMatch[1]);
+      // ambil nama setelah jam atau sebelum
+      let namaPart=line.replace(/\d+\s*j.*/i,'').trim();
+      namaPart=namaPart.replace(/[-–]/g,' ').trim();
+      if(!namaPart){ namaPart=line.split(' ')[0]; }
+      let norm=normalisasiNamaAnggota(namaPart);
+      if(norm && isJamValid(jam)){ items.push({tanggal:curTanggal,nama:norm,jam:jam}); }
+    }
+  });
+  document.getElementById('previewPesan').innerHTML=items.length? items.map(it=>'<div class="py-1 border-b border-slate-100 mono text-[11px]">'+it.tanggal+' - '+it.nama+' - '+it.jam+'j ('+calcTUL(it.jam)+' TUL)</div>').join('') : '<div class="text-[11px] text-slate-400">Tidak ada data terdeteksi</div>';
+  document.getElementById('previewPesan').classList.remove('hidden');
+  document.getElementById('previewPesan')._items=items;
+}
+async function simpanPesan(){
+  const cont=document.getElementById('previewPesan');
+  const items=cont._items||[];
+  if(!items.length){ toast('Tidak ada data'); return; }
+  toast('⏳ Menyimpan '+items.length+'...');
+  try{
+    const res=await fetch(getSyncUrl(),{method:'POST', body: JSON.stringify({action:'addBulk', items: items})});
+    // juga via jsonp fallback
+    try{ await jsonp(getSyncUrl()+'?action=read&_='+Date.now()); }catch(e){}
+  }catch(e){}
+  try{ // addBulk via jsonp too
+    const bulkStr=encodeURIComponent(JSON.stringify(items));
+    // pakai POST form
+    const fd=new FormData(); fd.append('action','addBulk'); fd.append('items', JSON.stringify(items));
+    fetch(getSyncUrl(),{method:'POST', body: fd});
+  }catch(e){}
+  // lokal
+  items.forEach(it=>{
+    const norm=normalizeTanggal(it.tanggal);
+    allData.push({tanggal:it.tanggal,tanggalNorm:norm,nama:it.nama,namaAsli:it.nama,jam:it.jam,tul:calcTUL(it.jam)});
+  });
+  try{localStorage.setItem('cache_lembur', JSON.stringify(allData));}catch{}
+  document.getElementById('txtPesan').value=''; cont.innerHTML=''; cont.classList.add('hidden'); render(); toast('✅ '+items.length+' disimpan'); setTimeout(()=>fetchData(true),1000);
+}
+async function approveMember(nama){
+  if(!confirm('Approve '+nama+'?')) return;
+  toast('⏳ Approve...');
+  try{ await jsonp(getSyncUrl()+'?action=approveMember&nama='+encodeURIComponent(nama)+'&_='+Date.now()); toast('✅ Approved'); fetchMembers(); }catch(e){ toast('Gagal'); }
+}
+async function rejectMember(nama){
+  if(!confirm('Reject '+nama+'?')) return;
+  try{ await jsonp(getSyncUrl()+'?action=rejectMember&nama='+encodeURIComponent(nama)+'&_='+Date.now()); toast('Rejected'); fetchMembers(); }catch(e){}
+}
+function openPesan(){ document.getElementById('modalPesan').classList.remove('hidden'); }
+function closePesan(){ document.getElementById('modalPesan').classList.add('hidden'); }
+
+function render(){
+  if(!isLogin){
+    document.getElementById('app').innerHTML='<div class="min-h-screen grid place-items-center p-6"><div class="w-full max-w-[320px]"><div class="mb-10"><div class="text-[10px] tracking-[0.25em] text-slate-400">AREA EF</div><div class="text-[22px] font-light tracking-tight mt-2">Admin</div><div class="text-[12px] text-slate-400 mt-1">Ultra minimal</div></div><input id="apass" type="password" placeholder="Password" class="w-full h-[44px] bg-transparent border-b border-slate-200 px-0 text-[14px] focus:border-black focus:outline-none"><div id="aerr" class="text-[11px] text-red-500 mt-3 min-h-[16px]"></div><button onclick="login()" class="w-full h-[44px] bg-black text-white text-[12px] tracking-wide rounded-full mt-6">Masuk</button><div class="mt-8 text-[9px] text-slate-300 mono">SYNC: '+getSyncUrl().slice(-20)+' | '+lastFetchInfo+'</div></div></div>';
+    return;
+  }
+  const data=filteredData(); const groupedTanggal=groupByTanggal(data); const groupedKaryawan=groupByKaryawan(data); const totalTUL=data.reduce((s,r)=>s+r.tul,0);
+  let html='';
+  html+='<div class="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-slate-100 px-6 py-4 flex justify-between items-center"><div class="text-[10px] tracking-[0.2em] text-slate-400">AREA EF</div><div class="flex items-center gap-3"><div class="text-[11px] mono text-slate-500">'+allData.length+' data</div><button onclick="logout()" class="text-[11px] text-slate-400 hover:text-black">Keluar</button></div></div>';
+  html+='<div class="max-w-[520px] mx-auto px-6 py-10">';
+  // Total
+  html+='<div class="mb-8"><div class="flex items-baseline gap-3"><div class="mono text-[56px] font-light leading-none tracking-tighter">'+totalTUL+'</div><div class="text-[10px] tracking-[0.2em] text-slate-400">TUL</div></div><div class="mono text-[10px] text-slate-400 mt-2">'+lastFetchInfo+'</div>';
+  // Tabs ultra minimal
+  html+='<div class="mt-8 flex gap-6 border-b border-slate-100">';
+  html+='<button onclick="activeTab=\'history\';render()" class="pb-3 text-[11px] tracking-wide '+(activeTab==='history'?'border-b border-black text-black':'text-slate-400')+'">HISTORY</button>';
+  html+='<button onclick="activeTab=\'input\';render()" class="pb-3 text-[11px] tracking-wide '+(activeTab==='input'?'border-b border-black text-black':'text-slate-400')+'">INPUT</button>';
+  html+='<button onclick="activeTab=\'members\';render()" class="pb-3 text-[11px] tracking-wide relative '+(activeTab==='members'?'border-b border-black text-black':'text-slate-400')+'">MEMBERS '+(pendingMembers.length?'<span class="ml-1 bg-black text-white text-[9px] px-1.5 py-0.5 rounded-full">'+pendingMembers.length+'</span>':'')+'</button>';
+  html+='</div></div>';
+
+  if(activeTab==='history'){
+    html+='<div class="flex gap-2 mb-8">';
+    html+='<select onchange="filterBulan=this.value;render()" class="mono h-[36px] px-4 rounded-full bg-slate-50 border border-slate-200 text-[11px] text-slate-700 focus:outline-none focus:border-black">';
+    const bln=[['all','Semua'],['1','Jan'],['2','Feb'],['3','Mar'],['4','Apr'],['5','Mei'],['6','Jun'],['7','Jul'],['8','Agu'],['9','Sep'],['10','Okt'],['11','Nov'],['12','Des']];
+    for(let i=0;i<bln.length;i++){html+='<option value="'+bln[i][0]+'" '+(filterBulan===bln[i][0]?'selected':'')+'>'+bln[i][1]+'</option>';}
+    html+='</select>';
+    html+='<button onclick="fetchData(true)" class="h-[36px] px-4 rounded-full border border-slate-200 text-[11px]">Refresh</button>';
+    html+='<button onclick="openPesan()" class="h-[36px] px-5 rounded-full bg-black text-white text-[11px]">+ Plan</button>';
+    html+='</div>';
+    if(groupedTanggal.length===0){ html+='<div class="py-24 text-center mono text-[11px] text-slate-300">TIDAK ADA DATA<br><span class="text-[9px]">'+lastFetchInfo+'</span></div>'; }
+    else{
+      for(let g of groupedTanggal){
+        html+='<div class="mb-8"><div class="flex justify-between items-center mb-3"><div class="mono text-[11px] tracking-[0.15em] text-slate-500">'+formatTanggal(g.tanggal).toUpperCase()+'</div><button onclick="hapusTanggal(\''+g.tanggal+'\')" class="text-[10px] text-slate-300 hover:text-red-500">hapus tgl</button></div><div class="border-t border-slate-100">';
+        for(let r of g.rows){
+          html+='<div class="flex justify-between items-center py-3 border-b border-slate-50 group"><div class="flex gap-3 items-center"><div class="mono text-[13px]">'+r.nama+'</div><div class="mono text-[11px] text-slate-400">'+r.jam+'j • '+r.tul+'</div></div><button onclick="hapusTransaksi(\''+r.tanggalNorm+'\',\''+r.nama+'\',\''+r.jam+'\')" class="opacity-0 group-hover:opacity-100 text-[10px] text-slate-300 hover:text-red-500">✕</button></div>';
+        }
+        html+='</div></div>';
+      }
+    }
+    // Rekap karyawan minimal
+    if(groupedKaryawan.length){
+      html+='<div class="mt-12 pt-8 border-t border-slate-100"><div class="mono text-[10px] tracking-[0.2em] text-slate-400 mb-4">REKAP</div>';
+      for(let k of groupedKaryawan){
+        html+='<div class="flex justify-between py-2 border-b border-slate-50"><div class="text-[12px]">'+k.nama+'</div><div class="mono text-[11px] text-slate-500">'+k.totalTUL+' TUL • '+k.count+' hari</div></div>';
+      }
+      html+='</div>';
+    }
+  } else if(activeTab==='input'){
+    html+='<div class="space-y-6"><div class="border border-slate-200 rounded-[16px] p-4"><div class="mono text-[11px] tracking-wide mb-3">INPUT PLAN</div><textarea id="txtPesan" rows="8" class="w-full bg-slate-50 border border-slate-100 rounded-[12px] p-3 text-[12px] mono focus:outline-none focus:border-black" placeholder="Contoh:\n18-10-2025\nBudi 6j\nAnisa 4j"></textarea><div id="previewPesan" class="hidden mt-3 bg-slate-50 border rounded-[12px] p-3"></div><div class="flex gap-2 mt-3"><button onclick="parsePlan()" class="h-[36px] px-4 rounded-full border border-slate-200 text-[11px]">Preview</button><button onclick="simpanPesan()" class="h-[36px] px-5 rounded-full bg-black text-white text-[11px]">Simpan</button></div></div><div class="mono text-[9px] text-slate-300">'+lastFetchInfo+'</div></div>';
+  } else if(activeTab==='members'){
+    html+='<div class="space-y-6">';
+    if(pendingMembers.length){
+      html+='<div><div class="mono text-[10px] tracking-[0.2em] text-amber-600 mb-3">PENDING '+pendingMembers.length+'</div><div class="space-y-2">';
+      for(let m of pendingMembers){
+        html+='<div class="flex justify-between items-center p-3 border border-amber-200 bg-amber-50/50 rounded-[12px]"><div><div class="text-[12px]">'+m.nama+'</div><div class="mono text-[10px] text-slate-500">'+(m.tglLahir||'')+'</div></div><div class="flex gap-1"><button onclick="approveMember(\''+m.nama+'\')" class="h-[28px] px-3 rounded-full bg-black text-white text-[10px]">Approve</button><button onclick="rejectMember(\''+m.nama+'\')" class="h-[28px] px-3 rounded-full border text-[10px]">Reject</button></div></div>';
+      }
+      html+='</div></div>';
+    } else {
+      html+='<div class="py-12 text-center mono text-[11px] text-slate-300">TIDAK ADA PENDING</div>';
+    }
+    html+='<button onclick="fetchMembers()" class="h-[36px] px-4 rounded-full border border-slate-200 text-[11px]">Refresh Members</button></div>';
+  }
+
+  html+='<div class="mt-16 pt-8 border-t border-slate-100 text-center mono text-[9px] tracking-[0.2em] text-slate-300">AREA EF • ULTRA MINIMAL • '+allData.length+' DATA • '+new Date().toLocaleDateString('id-ID')+'</div>';
+  html+='</div>';
+  document.getElementById('app').innerHTML=html;
+  if(activeTab==='input' && document.getElementById('massalList')){}
+}
+
+fetchData();
+</script>
+
+<div id="modalPesan" class="fixed inset-0 bg-black/40 hidden z-50 flex items-center justify-center p-4"><div class="bg-white rounded-[16px] w-full max-w-lg border"><div class="p-4 border-b flex justify-between items-center"><div class="mono text-[11px]">INPUT PLAN</div><button onclick="closePesan()" class="w-7 h-7 rounded-full bg-slate-100 grid place-items-center text-[12px]">✕</button></div><div class="p-4"><textarea id="txtPesanModal" class="w-full h-40 bg-slate-50 border rounded-[12px] p-3 text-[12px] mono"></textarea></div></div></div>
+<script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body></html>
