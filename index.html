@@ -1,0 +1,277 @@
+<!DOCTYPE html><html lang="id"><head><style>
+@font-face {
+  font-family: "Optimistic";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("/fonts/OptimisticAI_VF_Optimized.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Optimistic Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/OptimisticMono_W_TextRegular.woff2") format("woff2");
+}
+:where(html) {
+  font-family: "Optimistic", system-ui, sans-serif;
+}
+:where(code, pre, kbd, samp) {
+  font-family: "Optimistic Mono", ui-monospace, monospace;
+}
+</style><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>AREA EF - Anggota</title>
+<style>
+*{box-sizing:border-box;font-family:Inter,system-ui,sans-serif}
+body{margin:0;background:#F8FAFC}
+.wrap{max-width:480px;margin:0 auto;background:#F8FAFC;min-height:100vh;padding-bottom:80px}
+.header{height:64px;background:#fff;display:flex;justify-content:space-between;align-items:center;padding:0 10px;border-bottom:1px solid #E5E7EB;position:sticky;top:0;z-index:30}
+.pill{padding:8px 12px;background:#F1F5F9;border:1px solid #E2E8F0;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+.pillGP{background:#000;color:#fff;border-color:#000}
+.panel{position:absolute;top:44px;right:0;background:#fff;border:1px solid #E2E8F0;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.12);width:130px;display:none;z-index:40;overflow:hidden;max-height:320px;overflow-y:auto}
+.panel button{width:100%;padding:12px;text-align:left;border:none;background:#fff;cursor:pointer;font-size:14px;font-weight:600}
+.panelGP{width:220px;right:0;padding:12px;display:none}
+.card{background:#fff;border-radius:16px;margin:12px;padding:16px}
+.riwayatCard{background:#fff;border-radius:16px;padding:14px;margin:0 12px 10px 12px;border:1px solid #F1F5F9}
+.empty{color:#94A3B8;text-align:center;padding:24px;font-size:14px}
+.status{font-size:11px;color:#10B981;margin:8px 12px;text-align:center}
+.authWrap{max-width:380px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:24px;background:#F8FAFC}
+.authCard{background:#fff;border-radius:20px;padding:24px;box-shadow:0 4px 24px rgba(0,0,0,.06);border:1px solid #E2E8F0}
+.inp{width:100%;height:48px;border:2px solid #000;border-radius:12px;padding:0 14px;font-weight:600;font-size:14px;margin-top:12px;outline:none}
+.btnBlack{width:100%;height:48px;background:#000;color:#fff;border:none;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;margin-top:16px}
+.tabRow{display:flex;gap:8px;margin-top:16px}
+.tab{flex:1;height:36px;border-radius:20px;border:1px solid #E2E8F0;background:#F8FAFC;font-weight:600;font-size:13px;cursor:pointer}
+.tab.active{background:#000;color:#fff;border-color:#000}
+</style></head><body>
+<div id="authScreen" class="authWrap">
+  <div style="text-align:center;margin-bottom:24px"><b style="font-size:28px">AREA EF</b><div style="font-size:12px;opacity:.6;letter-spacing:.15em;font-weight:700">ANGGOTA</div></div>
+  <div class="authCard">
+    <div class="tabRow"><button id="tabLogin" class="tab active" onclick="switchTab('login')">Login</button><button id="tabDaftar" class="tab" onclick="switchTab('daftar')">Daftar</button></div>
+    <div id="loginForm"><div style="font-size:16px;font-weight:800;margin-top:16px">Masuk Anggota</div>
+      <input id="loginNama" class="inp" placeholder="Nama"><input id="loginPass" type="password" class="inp" placeholder="Password">
+      <button class="btnBlack" onclick="doLogin()">LOGIN</button><div id="loginMsg" style="font-size:12px;color:#EF4444;margin-top:10px;min-height:16px"></div></div>
+    <div id="daftarForm" style="display:none"><div style="font-size:16px;font-weight:800;margin-top:16px">Daftar</div>
+      <input id="regNama" class="inp" placeholder="Nama" list="namaListOpt"><datalist id="namaListOpt"></datalist>
+      <input id="regTgl" type="text" class="inp" placeholder="Tanggal Lahir ketik manual: 1995-01-15">
+      <input id="regPass" type="password" class="inp" placeholder="Password min 4">
+      <button class="btnBlack" onclick="doDaftar()">DAFTAR</button><div id="daftarMsg" style="font-size:12px;color:#EF4444;margin-top:10px;min-height:16px"></div>
+      
+    </div>
+  </div>
+</div>
+
+<div id="appScreen" class="wrap" style="display:none">
+<div class="header">
+  <b style="white-space:nowrap;font-size:14px">AREA EF | <span id="hNama">-</span></b>
+  <div style="display:flex;gap:4px;align-items:center">
+    <div style="position:relative"><div class="pill" onclick="toggleB()"><span id="bBtn">Okt</span></div><div class="panel" id="bPanel"></div></div>
+    <div style="position:relative"><div class="pill" onclick="toggleT()"><span id="tBtn">2026</span></div><div class="panel" id="tPanel"></div></div>
+    <div style="position:relative"><div class="pill pillGP" onclick="toggleGP()">GP+</div>
+      <div class="panel panelGP" id="gpPanel">
+        <div style="font-size:11px;font-weight:700;opacity:.6">INPUT GP</div>
+        <input id="gpInputHeader" type="text" inputmode="numeric" placeholder="Ketik GP, contoh 7200000" style="width:100%;height:44px;border:2px solid #000;border-radius:8px;padding:0 10px;font-weight:700;margin-top:8px" oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
+        <button onclick="saveGPFromHeader()" style="width:100%;height:40px;background:#000;color:#fff;border:none;border-radius:8px;font-weight:700;margin-top:8px;cursor:pointer">SIMPAN GP</button>
+        
+      </div>
+    </div>
+    <div class="pill" id="btnKeluar" onclick="doLogout()" style="background:#EF4444;color:#fff;border-color:#EF4444;z-index:50;position:relative">KELUAR</div>
+  </div>
+</div>
+
+<div class="card" style="padding:20px"><div id="totalList"></div></div>
+<div id="status" class="status" style="display:none"></div>
+<div style="padding:0 12px;font-size:11px;font-weight:700;letter-spacing:.06em;opacity:.6">RIWAYAT SAYA</div>
+<div id="riwayatList" style="margin-top:8px"></div>
+</div>
+
+<script>
+const DEFAULT_DATA = [{"id": 1, "tgl": 1, "bulan": "Sep", "tahun": "2026", "jam": "4", "orang": ["Dozen", "Eka", "Putri", "Supriyadi", "Syarif", "Zaelani"], "collapsed": true}, {"id": 2, "tgl": 2, "bulan": "Sep", "tahun": "2026", "jam": "4", "orang": ["Arief", "Budi", "Dozen", "Nia", "Syarif", "Topik", "Yudi"], "collapsed": true}, {"id": 3, "tgl": 3, "bulan": "Sep", "tahun": "2026", "jam": "4", "orang": ["Arief", "Budi", "Eka", "Nia", "Supriyadi", "Topik", "Yudi", "Zaelani"], "collapsed": true}, {"id": 4, "tgl": 4, "bulan": "Sep", "tahun": "2026", "jam": "4", "orang": ["Arief", "Dozen", "Eka", "Putri", "Syarif", "Yudi"], "collapsed": true}, {"id": 5, "tgl": 5, "bulan": "Sep", "tahun": "2026", "jam": "8", "orang": ["Aaf", "Aditya", "Anah", "Anisa", "Arief", "Budi", "Dozen", "Eka", "Nia", "Putri", "Supriyadi", "Syarif", "Topik", "Yudi", "Zaelani"], "collapsed": true}, {"id": 6, "tgl": 6, "bulan": "Sep", "tahun": "2026", "jam": "8", "orang": ["Aaf", "Arief", "Budi", "Dozen", "Eka", "Supriyadi", "Syarif", "Topik", "Yudi", "Zaelani"], "collapsed": true}, {"id": 7, "tgl": 7, "bulan": "Sep", "tahun": "2026", "jam": "3", "orang": ["Arief", "Budi", "Dozen", "Eka", "Nely", "Nia", "Syarif", "Yudi"], "collapsed": true}, {"id": 8, "tgl": 8, "bulan": "Sep", "tahun": "2026", "jam": "3", "orang": ["Arief", "Budi", "Dozen", "Eka", "Nely", "Nia", "Supriyadi", "Syarif", "Topik", "Yudi", "Zaelani"], "collapsed": true}, {"id": 9, "tgl": 9, "bulan": "Sep", "tahun": "2026", "jam": "3", "orang": ["Arief", "Budi", "Dozen", "Eka", "Nely", "Nia", "Supriyadi", "Syarif", "Topik", "Yudi", "Zaelani"], "collapsed": true}, {"id": 10, "tgl": 10, "bulan": "Sep", "tahun": "2026", "jam": "3", "orang": ["Arief", "Budi", "Dozen", "Eka", "Nely", "Nia", "Supriyadi", "Topik", "Yudi", "Zaelani"], "collapsed": true}, {"id": 11, "tgl": 11, "bulan": "Sep", "tahun": "2026", "jam": "3", "orang": ["Arief", "Budi", "Dozen", "Eka", "Nely", "Nia", "Supriyadi", "Syarif", "Topik", "Zaelani"], "collapsed": true}, {"id": 12, "tgl": 12, "bulan": "Sep", "tahun": "2026", "jam": "8", "orang": ["Aditya", "Arief", "Budi", "Dozen", "Eka", "Nely", "Nia", "Supriyadi", "Syarif", "Topik", "Yudi", "Zaelani"], "collapsed": true}, {"id": 13, "tgl": 13, "bulan": "Sep", "tahun": "2026", "jam": "6", "orang": ["Anah", "Budi", "Dozen", "Eka", "Supriyadi", "Syarif", "Topik", "Yudi", "Zaelani"], "collapsed": true}, {"id": 14, "tgl": 14, "bulan": "Sep", "tahun": "2026", "jam": "3", "orang": ["Budi"], "collapsed": true}, {"id": 15, "tgl": 14, "bulan": "Sep", "tahun": "2026", "jam": "4", "orang": ["Supriyadi"], "collapsed": true}, {"id": 16, "tgl": 15, "bulan": "Sep", "tahun": "2026", "jam": "3", "orang": ["Budi", "Supriyadi", "Syarif", "Yudi"], "collapsed": true}, {"id": 17, "tgl": 15, "bulan": "Sep", "tahun": "2026", "jam": "4", "orang": ["Arief", "Eka", "Nia", "Putri", "Topik"], "collapsed": true}, {"id": 18, "tgl": 16, "bulan": "Sep", "tahun": "2026", "jam": "3", "orang": ["Budi", "Supriyadi", "Syarif", "Yudi"], "collapsed": true}, {"id": 19, "tgl": 16, "bulan": "Sep", "tahun": "2026", "jam": "4", "orang": ["Arief", "Dozen", "Eka", "Nely", "Nia", "Putri", "Topik"], "collapsed": true}, {"id": 20, "tgl": 17, "bulan": "Sep", "tahun": "2026", "jam": "3", "orang": ["Budi", "Supriyadi", "Syarif", "Yudi"], "collapsed": true}, {"id": 21, "tgl": 17, "bulan": "Sep", "tahun": "2026", "jam": "4", "orang": ["Arief", "Dozen", "Eka", "Nely", "Topik"], "collapsed": true}, {"id": 22, "tgl": 18, "bulan": "Sep", "tahun": "2026", "jam": "3", "orang": ["Budi", "Supriyadi"], "collapsed": true}, {"id": 23, "tgl": 18, "bulan": "Sep", "tahun": "2026", "jam": "4", "orang": ["Arief", "Dozen", "Eka", "Nia"], "collapsed": true}, {"id": 24, "tgl": 19, "bulan": "Sep", "tahun": "2026", "jam": "6", "orang": ["Anah", "Anisa", "Arief", "Budi", "Dozen", "Eka", "Nely", "Nia", "Putri", "Supriyadi", "Syarif", "Topik", "Yudi"], "collapsed": true}, {"id": 25, "tgl": 20, "bulan": "Sep", "tahun": "2026", "jam": "6", "orang": ["Aaf", "Anisa", "Arief", "Budi", "Dozen", "Eka", "Nely", "Nia", "Supriyadi", "Syarif", "Topik", "Yudi"], "collapsed": true}, {"id": 26, "tgl": 21, "bulan": "Sep", "tahun": "2026", "jam": "3", "orang": ["Budi", "Supriyadi", "Syarif"], "collapsed": true}, {"id": 27, "tgl": 21, "bulan": "Sep", "tahun": "2026", "jam": "4", "orang": ["Topik"], "collapsed": true}, {"id": 28, "tgl": 22, "bulan": "Sep", "tahun": "2026", "jam": "3", "orang": ["Budi", "Supriyadi", "Yudi"], "collapsed": true}, {"id": 29, "tgl": 22, "bulan": "Sep", "tahun": "2026", "jam": "4", "orang": ["Eka", "Nia", "Topik"], "collapsed": true}, {"id": 30, "tgl": 23, "bulan": "Sep", "tahun": "2026", "jam": "3", "orang": ["Budi", "Supriyadi"], "collapsed": true}, {"id": 31, "tgl": 23, "bulan": "Sep", "tahun": "2026", "jam": "4", "orang": ["Arief", "Dozen", "Nely", "Syarif", "Topik"], "collapsed": true}, {"id": 32, "tgl": 24, "bulan": "Sep", "tahun": "2026", "jam": "3", "orang": ["Supriyadi", "Yudi"], "collapsed": true}, {"id": 33, "tgl": 24, "bulan": "Sep", "tahun": "2026", "jam": "4", "orang": ["Arief", "Dozen", "Eka", "Nely", "Nia", "Syarif", "Topik"], "collapsed": true}, {"id": 34, "tgl": 25, "bulan": "Sep", "tahun": "2026", "jam": "3", "orang": ["Budi"], "collapsed": true}, {"id": 35, "tgl": 25, "bulan": "Sep", "tahun": "2026", "jam": "4", "orang": ["Dozen", "Nely", "Nia", "Syarif", "Topik"], "collapsed": true}, {"id": 36, "tgl": 26, "bulan": "Sep", "tahun": "2026", "jam": "6", "orang": ["Anisa", "Budi", "Dozen", "Eka", "Nely", "Nia", "Putri", "Supriyadi", "Syarif", "Topik", "Yudi"], "collapsed": true}, {"id": 37, "tgl": 27, "bulan": "Sep", "tahun": "2026", "jam": "7", "orang": ["Arief", "Dozen", "Nely", "Putri", "Syarif"], "collapsed": true}, {"id": 38, "tgl": 28, "bulan": "Sep", "tahun": "2026", "jam": "3", "orang": ["Arief", "Dozen", "Topik"], "collapsed": true}, {"id": 39, "tgl": 28, "bulan": "Sep", "tahun": "2026", "jam": "4", "orang": ["Eka"], "collapsed": true}, {"id": 40, "tgl": 29, "bulan": "Sep", "tahun": "2026", "jam": "3", "orang": ["Arief", "Eka", "Syarif", "Topik", "Yudi"], "collapsed": true}, {"id": 41, "tgl": 29, "bulan": "Sep", "tahun": "2026", "jam": "4", "orang": ["Nely", "Nia", "Supriyadi"], "collapsed": true}, {"id": 42, "tgl": 30, "bulan": "Sep", "tahun": "2026", "jam": "3", "orang": ["Arief", "Eka"], "collapsed": true}, {"id": 43, "tgl": 30, "bulan": "Sep", "tahun": "2026", "jam": "4", "orang": ["Nely", "Nia", "Supriyadi"], "collapsed": true}, {"id": 44, "tgl": 1, "bulan": "Okt", "tahun": "2026", "jam": "4", "orang": ["Dozen", "Nia", "Yudi"], "collapsed": true}, {"id": 45, "tgl": 2, "bulan": "Okt", "tahun": "2026", "jam": "4", "orang": ["Supriyadi"], "collapsed": true}, {"id": 46, "tgl": 3, "bulan": "Okt", "tahun": "2026", "jam": "6", "orang": ["Supriyadi"], "collapsed": true}, {"id": 47, "tgl": 3, "bulan": "Okt", "tahun": "2026", "jam": "7", "orang": ["Anisa", "Arief", "Dozen", "Eka", "Nely", "Putri", "Syarif", "Topik"], "collapsed": true}, {"id": 48, "tgl": 4, "bulan": "Okt", "tahun": "2026", "jam": "7", "orang": ["Arief", "Dozen", "Nia", "Putri", "Supriyadi", "Yudi"], "collapsed": true}, {"id": 49, "tgl": 5, "bulan": "Okt", "tahun": "2026", "jam": "3", "orang": ["Arief", "Dozen", "Nely", "Syarif", "Yudi"], "collapsed": true}, {"id": 50, "tgl": 5, "bulan": "Okt", "tahun": "2026", "jam": "4", "orang": ["Zaelani"], "collapsed": true}, {"id": 51, "tgl": 6, "bulan": "Okt", "tahun": "2026", "jam": "3", "orang": ["Arief", "Budi", "Nia"], "collapsed": true}, {"id": 52, "tgl": 7, "bulan": "Okt", "tahun": "2026", "jam": "3", "orang": ["Budi", "Dozen", "Nia", "Yudi"], "collapsed": true}, {"id": 53, "tgl": 7, "bulan": "Okt", "tahun": "2026", "jam": "4", "orang": ["Topik"], "collapsed": true}, {"id": 54, "tgl": 8, "bulan": "Okt", "tahun": "2026", "jam": "3", "orang": ["Arief", "Eka", "Nely", "Yudi"], "collapsed": true}, {"id": 55, "tgl": 9, "bulan": "Okt", "tahun": "2026", "jam": "2", "orang": ["Budi"], "collapsed": true}, {"id": 56, "tgl": 9, "bulan": "Okt", "tahun": "2026", "jam": "3", "orang": ["Eka", "Syarif"], "collapsed": true}, {"id": 57, "tgl": 9, "bulan": "Okt", "tahun": "2026", "jam": "4", "orang": ["Topik"], "collapsed": true}, {"id": 58, "tgl": 10, "bulan": "Okt", "tahun": "2026", "jam": "6", "orang": ["Anisa", "Topik"], "collapsed": true}, {"id": 59, "tgl": 10, "bulan": "Okt", "tahun": "2026", "jam": "7", "orang": ["Aditya", "Arief", "Budi", "Dozen", "Eka", "Nely", "Nia", "Putri", "Yudi", "Zaelani"], "collapsed": true}, {"id": 60, "tgl": 11, "bulan": "Okt", "tahun": "2026", "jam": "8", "orang": ["Arief", "Budi", "Syarif", "Topik"], "collapsed": true}, {"id": 61, "tgl": 12, "bulan": "Okt", "tahun": "2026", "jam": "3", "orang": ["Aditya", "Arief", "Budi", "Nely", "Putri", "Supriyadi", "Syarif", "Topik", "Yudi", "Zaelani"], "collapsed": true}, {"id": 62, "tgl": 13, "bulan": "Okt", "tahun": "2026", "jam": "3", "orang": ["Arief", "Eka", "Nely", "Putri", "Supriyadi", "Syarif", "Topik", "Yudi", "Zaelani"], "collapsed": true}, {"id": 63, "tgl": 14, "bulan": "Okt", "tahun": "2026", "jam": "3", "orang": ["Budi", "Dozen", "Nia", "Supriyadi", "Zaelani"], "collapsed": true}, {"id": 64, "tgl": 15, "bulan": "Okt", "tahun": "2026", "jam": "3", "orang": ["Arief", "Dozen", "Eka", "Nely", "Nia", "Syarif", "Topik", "Yudi"], "collapsed": true}, {"id": 65, "tgl": 16, "bulan": "Okt", "tahun": "2026", "jam": "3", "orang": ["Aditya", "Arief", "Budi", "Dozen", "Nely", "Putri", "Supriyadi", "Syarif", "Topik"], "collapsed": true}, {"id": 66, "tgl": 17, "bulan": "Okt", "tahun": "2026", "jam": "8", "orang": ["Aaf", "Anah", "Anisa", "Arief", "Budi", "Nely", "Putri", "Supriyadi", "Syarif", "Topik", "Yudi", "Zaelani"], "collapsed": true}, {"id": 67, "tgl": 18, "bulan": "Okt", "tahun": "2026", "jam": "8", "orang": ["Aaf", "Arief", "Putri", "Supriyadi", "Topik", "Yudi", "Zaelani"], "collapsed": true}, {"id": 68, "tgl": 19, "bulan": "Okt", "tahun": "2026", "jam": "3", "orang": ["Arief", "Budi", "Dozen", "Eka", "Yudi", "Zaelani"], "collapsed": true}];
+const bulanList=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+const tahunList=['2026','2027','2028'];
+const jamMap={'2':3.5,'3':5.5,'4':7.5,'6':12,'7':14,'8':17};
+const namaList=['Arief','Topik','Yudi','Putri','Budi','Dozen','Syarif','Nely','Zaelani','Nia','Eka','Supriyadi','Aaf','Aditya','Anah','Anisa'];
+let bulan='Okt', tahun='2026', riwayat=[];
+const LS_KEY='area_ef_riwayat_final_v3';
+const USERS_KEY='area_ef_users';
+const SESSION_KEY='area_ef_session';
+const WEBAPP_URL='https://script.google.com/macros/s/AKfycbylrqytsyq-ZKx1azc945HmvxYjB_9gPOE5YxpHVE5BeQdjCgu9ELZ3Gh-plif5N1a1/exec';
+let currentUser=null;
+
+// Normalisasi nama: jika input mengandung namaList, map ke namaList
+function normalizeNama(input){
+  if(!input) return '';
+  const lower = input.toLowerCase().trim();
+  // cek exact dulu
+  let exact = namaList.find(n=>n.toLowerCase()===lower);
+  if(exact) return exact;
+  // cek apakah input mengandung salah satu namaList
+  for(let n of namaList){
+    if(lower.includes(n.toLowerCase())) return n;
+  }
+  // cek apakah namaList mengandung input (misal ketik bud -> Budi)
+  for(let n of namaList){
+    if(n.toLowerCase().includes(lower)) return n;
+  }
+  // ambil kata pertama sebagai fallback jika kata pertama ada di list
+  const first = lower.split(/\s+/)[0];
+  let f = namaList.find(n=>n.toLowerCase()===first);
+  if(f) return f;
+  // jika tidak ketemu, kembalikan input asli dengan huruf depan kapital (biar admin tau)
+  // tapi untuk validasi anggota kita tetap pakai hasil pencarian mengandung
+  return input.split(' ').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
+}
+function findAnggota(input){
+  const norm = normalizeNama(input);
+  return namaList.includes(norm) ? norm : null;
+}
+
+function loadUsers(){try{return JSON.parse(localStorage.getItem(USERS_KEY)||'[]');}catch(e){return []}}
+function saveUsers(u){localStorage.setItem(USERS_KEY, JSON.stringify(u));}
+function getSession(){try{return JSON.parse(localStorage.getItem(SESSION_KEY)||'null')}catch(e){return null}}
+function setSession(u){localStorage.setItem(SESSION_KEY, JSON.stringify(u));}
+function clearSession(){localStorage.removeItem(SESSION_KEY);}
+function initAuth(){
+  try{document.getElementById('namaListOpt').innerHTML=namaList.map(n=>`<option value="${n}">`).join('');}catch(e){}
+  const sess=getSession();
+  if(sess && sess.role!=='admin'){currentUser=sess;showApp();}else{showAuth();}
+}
+function showAuth(){document.getElementById('authScreen').style.display='flex';document.getElementById('appScreen').style.display='none';}
+function showApp(){
+  document.getElementById('authScreen').style.display='none';
+  document.getElementById('appScreen').style.display='block';
+  document.getElementById('hNama').innerText=currentUser.nama;
+  document.getElementById('bBtn').innerText=bulan;
+  document.getElementById('tBtn').innerText=tahun;
+  loadLS();initPanels();renderAll();loadFromSheet();
+}
+function switchTab(t){
+  document.getElementById('tabLogin').className=t==='login'?'tab active':'tab';
+  document.getElementById('tabDaftar').className=t==='daftar'?'tab active':'tab';
+  document.getElementById('loginForm').style.display=t==='login'?'block':'none';
+  document.getElementById('daftarForm').style.display=t==='daftar'?'block':'none';
+}
+function doDaftar(){
+  const namaInput=document.getElementById('regNama').value.trim();
+  let tglRaw=document.getElementById('regTgl').value.trim();
+  const pass=document.getElementById('regPass').value;
+  const msgEl=document.getElementById('daftarMsg');
+  msgEl.style.color='#EF4444';
+  if(!namaInput||!tglRaw||!pass){msgEl.innerText='Lengkapi Nama, Tgl Lahir, Password';return;}
+  let tgl=tglRaw; if(tglRaw.includes('/')) tgl=tglRaw.replace(/\//g,'-');
+  const parts=tgl.split('-'); if(parts.length===3 && parts[0].length<=2){tgl = parts[2]+'-'+parts[1].padStart(2,'0')+'-'+parts[0].padStart(2,'0');}
+  
+  const anggota = findAnggota(namaInput);
+  if(!anggota){msgEl.innerText='Nama harus mengandung nama anggota. Contoh: Budi Santoso -> Budi';return;}
+  const nama = anggota; // Budi santoso / Kuncoro Budi -> Budi
+  
+  let users=loadUsers(); if(users.find(u=>u.nama.toLowerCase()===nama.toLowerCase())){msgEl.innerText='Sudah terdaftar sebagai '+nama+', silakan Login';return;}
+  const newUser={nama,tglLahir:tgl,pass,role:'anggota',created:new Date().toISOString(), namaInput:namaInput};
+  users.push(newUser); saveUsers(users);
+  msgEl.style.color='#64748B'; msgEl.innerText='Menyimpan...';
+  fetch(WEBAPP_URL+'?action=daftar&nama='+encodeURIComponent(nama)+'&tglLahir='+encodeURIComponent(tgl)+'&pass='+encodeURIComponent(pass)+'&namaInput='+encodeURIComponent(namaInput))
+    .then(r=>r.json()).then(d=>{
+      msgEl.style.color='#10B981'; 
+      if(d.ok||d.success) msgEl.innerText='Daftar berhasil! '+namaInput+' masuk ke '+nama+'. Tersimpan di Sheet.';
+      else msgEl.innerText='Daftar berhasil! '+namaInput+' -> '+nama;
+      setTimeout(()=>switchTab('login'),1500);
+    }).catch(e=>{
+      msgEl.style.color='#10B981'; msgEl.innerText='Daftar berhasil! '+namaInput+' -> '+nama+' (offline)';
+      setTimeout(()=>switchTab('login'),1000);
+    });
+}
+function doLogin(){
+  const namaInput=document.getElementById('loginNama').value.trim();
+  const pass=document.getElementById('loginPass').value;
+  const msgEl=document.getElementById('loginMsg');
+  if(!namaInput||!pass){msgEl.innerText='Isi Nama & Password';return;}
+  const anggota = findAnggota(namaInput);
+  const namaCek = anggota || normalizeNama(namaInput);
+  msgEl.style.color='#64748B'; msgEl.innerText='Memeriksa...';
+  fetch(WEBAPP_URL+'?action=checkUser&nama='+encodeURIComponent(namaCek)+'&pass='+encodeURIComponent(pass)+'&namaInput='+encodeURIComponent(namaInput))
+    .then(r=>r.json()).then(d=>{
+      if(d.ok||d.found||d.valid){
+        let users=loadUsers();
+        let u=users.find(x=>x.nama.toLowerCase()===namaCek.toLowerCase());
+        if(!u){users.push({nama:d.nama||namaCek,tglLahir:d.tglLahir||'',pass,role:'anggota',created:new Date().toISOString(), namaInput:namaInput}); saveUsers(users);}
+        currentUser={nama:d.nama||namaCek,role:'anggota'}; setSession(currentUser); showApp(); return;
+      }
+      let users=loadUsers();
+      const u=users.find(x=>x.nama.toLowerCase()===namaCek.toLowerCase() && x.pass===pass) || users.find(x=>x.namaInput&&x.namaInput.toLowerCase()===namaInput.toLowerCase() && x.pass===pass);
+      if(!u){msgEl.style.color='#EF4444'; msgEl.innerText='Belum daftar! '+namaInput+' tidak ada di Sheet. Daftar dulu sebagai '+ (anggota||namaCek); return;}
+      currentUser={nama:u.nama,role:u.role}; setSession(currentUser); showApp();
+    }).catch(e=>{
+      let users=loadUsers();
+      const u=users.find(x=>x.nama.toLowerCase()===namaCek.toLowerCase() && x.pass===pass) || users.find(x=>x.namaInput&&x.namaInput.toLowerCase()===namaInput.toLowerCase() && x.pass===pass);
+      if(!u){msgEl.style.color='#EF4444'; msgEl.innerText='Belum daftar / offline. Daftar dulu.'; return;}
+      currentUser={nama:u.nama,role:u.role}; setSession(currentUser); showApp();
+    });
+}
+function doLogout(){
+  // tanpa confirm biar tidak block di WebView
+  try{ clearSession(); }catch(e){}
+  currentUser=null;
+  localStorage.removeItem('area_ef_session');
+  const auth = document.getElementById('authScreen');
+  const app = document.getElementById('appScreen');
+  if(auth) { auth.style.display='flex'; auth.style.visibility='visible'; }
+  if(app) { app.style.display='none'; }
+  const ln = document.getElementById('loginNama'); if(ln) ln.value='';
+  const lp = document.getElementById('loginPass'); if(lp) lp.value='';
+  const msg = document.getElementById('loginMsg'); if(msg) { msg.innerText=''; }
+  // paksa tampil login
+  showAuth();
+}
+function fmt(n){return (''+n).replace('.',',')}
+function setStatus(m){}
+function loadLS(){try{let d=localStorage.getItem(LS_KEY);if(d){riwayat=JSON.parse(d);}else{riwayat=DEFAULT_DATA;}}catch(e){riwayat=DEFAULT_DATA;}}
+function loadFromSheet(){setStatus('Loading...');fetch(WEBAPP_URL+'?action=load').then(r=>r.json()).then(data=>{if(data.riwayat){riwayat=data.riwayat;localStorage.setItem(LS_KEY, JSON.stringify(riwayat));renderAll();setStatus('Sheet: '+data.riwayat.length);}}).catch(e=>{setStatus('Offline');});}
+function initPanels(){
+  document.getElementById('bPanel').innerHTML=bulanList.map(b=>`<button onclick="pilihB('${b}')">${b}</button>`).join('');
+  document.getElementById('tPanel').innerHTML=tahunList.map(t=>`<button onclick="pilihT('${t}')">${t}</button>`).join('');
+}
+function closeAll(){['bPanel','tPanel','gpPanel'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';})}
+function toggleB(){const p=document.getElementById('bPanel');const s=p.style.display!=='block';closeAll();p.style.display=s?'block':'none';}
+function toggleT(){const p=document.getElementById('tPanel');const s=p.style.display!=='block';closeAll();p.style.display=s?'block':'none';}
+function toggleGP(){const p=document.getElementById('gpPanel');const s=p.style.display!=='block';closeAll();if(s){p.style.display='block'; const inp=document.getElementById('gpInputHeader'); if(inp){inp.value=getGP(); inp.focus();} } else p.style.display='none';}
+function pilihB(b){bulan=b;document.getElementById('bBtn').innerText=b;closeAll();renderAll();}
+function pilihT(t){tahun=t;document.getElementById('tBtn').innerText=t;closeAll();renderAll();}
+function getGP(){let v=localStorage.getItem('area_ef_gp_'+currentUser.nama); if(v===null||v==='') v=localStorage.getItem('area_ef_gp_global'); if(v===null||v==='') v='0'; let num=parseFloat(v); return isNaN(num)?0:num;}
+function setGP(val){if(val===null||val==='') val='0'; localStorage.setItem('area_ef_gp_'+currentUser.nama, val); localStorage.setItem('area_ef_gp_global', val);}
+function saveGPFromHeader(){const el=document.getElementById('gpInputHeader'); if(!el){alert('Isi GP dulu');return;} let val=el.value||'0'; setGP(val); closeAll(); renderAll(); setStatus('GP disimpan: Rp '+parseInt(val).toLocaleString('id-ID'));}
+function fmtRupiah(n){return 'Rp '+Math.round(n).toLocaleString('id-ID');}
+function hitung(){let total=0;riwayat.forEach(r=>{if(r.bulan===bulan && r.tahun===tahun && r.orang.includes(currentUser.nama)){total+=jamMap[r.jam]||0;}});return total;}
+function renderAll(){
+  const total=hitung();
+  const gp=getGP();
+  const nominal=total*gp/173;
+  document.getElementById('totalList').innerHTML=`
+    <div style="text-align:center;padding:8px 0">
+      <div style="font-size:56px;font-weight:900;letter-spacing:-.04em;line-height:1">${fmt(total)}</div>
+      <div style="font-size:22px;font-weight:900;margin-top:4px;letter-spacing:.1em">TUL</div>
+      <div style="margin-top:14px;background:#000;color:#fff;border-radius:12px;padding:14px">
+        <div style="font-size:24px;font-weight:900;margin-top:6px">${fmtRupiah(nominal)}</div>
+      </div>
+    </div>
+  `;
+  let list=riwayat.filter(r=>r.bulan===bulan && r.tahun===tahun && r.orang.includes(currentUser.nama));
+  if(list.length===0){document.getElementById('riwayatList').innerHTML=`<div class="empty">Belum ada riwayat untuk ${currentUser.nama} di ${bulan} ${tahun}</div>`;return}
+  let html='';list.forEach(r=>{
+    const jamReal=jamMap[r.jam]||0;
+    const fmtJam=fmt(jamReal);
+    const nom=jamReal*gp/173;
+    html+=`<div class="riwayatCard"><div style="display:flex;justify-content:space-between;align-items:center"><div><b style="font-size:16px;font-weight:800">${r.tgl} ${r.bulan}-${r.jam}-${fmtJam} TUL</b><div style="font-size:11px;color:#64748B;margin-top:2px">${r.orang.length} orang • ${fmtJam} TUL • ${fmtRupiah(nom)}</div></div><div style="width:44px;height:44px;border-radius:50%;background:#000;color:#fff;display:grid;place-items:center;font-weight:800">${r.jam}</div></div></div>`;
+  });
+  document.getElementById('riwayatList').innerHTML=html;
+}
+initAuth();
+const btnK = document.getElementById('btnKeluar');
+if(btnK){ btnK.addEventListener('click', function(e){ e.stopPropagation(); doLogout(); }); }
+
+document.addEventListener('click',function(e){
+  const ids=['bPanel','tPanel','gpPanel'];
+  const btns=['toggleB','toggleT','toggleGP'];
+  let inside=false;
+  ids.forEach(id=>{if(e.target.closest('#'+id)) inside=true;});
+  btns.forEach(fn=>{if(e.target.closest('[onclick="'+fn+'()"]')) inside=true;});
+  if(!inside) closeAll();
+});
+</script><script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body></html>
